@@ -172,7 +172,22 @@ export default {
 </script>
 ```
 
-### 규칙 3 — `<style scoped>` 동작 안 함
+### 규칙 3 — 페이지 title 설정
+
+페이지 컴포넌트에 `title` 옵션을 지정하면 라우팅 시 `document.title`이 자동으로 바뀐다.
+
+```vue
+<script>
+export default {
+  title: '사용자 목록',  // 이 페이지로 이동 시 document.title = '사용자 목록'
+  data() { ... }
+}
+</script>
+```
+
+`title`이 없으면 이전 페이지의 title이 유지된다.
+
+### 규칙 4 — `<style scoped>` 동작 안 함
 
 vue-zero는 `scoped`를 지원하지 않는다. `<style>`만 사용. 충돌 방지는 클래스명으로 직접 구분한다.
 
@@ -188,7 +203,7 @@ h1 { color: blue; }
 </style>
 ```
 
-### 규칙 4 — composables/는 vue-zero가 자동 등록하지 않는다
+### 규칙 5 — composables/는 vue-zero가 자동 등록하지 않는다
 
 `composables/` 폴더는 표준 JS 모듈이다. 직접 import해서 써야 한다.
 

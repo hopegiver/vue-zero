@@ -42,11 +42,16 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const componentLoader = new ComponentLoader(componentsDir)
   const routeScanner = new RouteScanner(pagesDir)
 
-  // 1. 전역 컴포넌트 로드 — components.json
-  const compNames = await componentLoader.readManifest()
+  // 1. components.json + pages.json 병렬 fetch
+  const [compNames, records] = await Promise.all([
+    componentLoader.readManifest(),
+    routeScanner.scan(),
+  ])
+
+  // 2. 전역 컴포넌트 로드 (pages.json 결과와 무관하게 병렬 처리됨)
   const globalComponents = await componentLoader.loadAll(compNames)
 
-  // 2. 레이아웃 로드 (캐시)
+  // 3. 레이아웃 로드 (캐시)
   const layoutCache = new Map<string, string | null>()
   async function loadLayout(name: string): Promise<string | null> {
     if (layoutCache.has(name)) return layoutCache.get(name)!
@@ -61,9 +66,6 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     }
   }
 
-  // 3. 라우트 목록 확보 — pages.json
-  const records = await routeScanner.scan()
-
   if (records.length === 0) {
     console.warn('[vue-zero] No pages found. Create pages/pages.json: ["index", "about", ...]')
   }
@@ -72,6 +74,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const sfcCache = new Map<string, Awaited<ReturnType<typeof parseSfc>>>()
   const componentCache = new Map<string, ReturnType<typeof Vue.defineComponent>>()
   const requiresAuthCache = new Map<string, boolean>()  // 라우트명 → requiresAuth (첫 방문 후 고정)
+  const titleCache = new Map<string, string | null>()   // 라우트명 → title (첫 방문 후 고정)
   const recordByName = new Map(records.map(r => [r.name, r]))
   const styleInjector = getStyleInjector()
 
@@ -131,22 +134,25 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     routes,
   })
 
-  // 6. 페이지 전환 시 이전 페이지 스타일 전환 + 인증 가드
+  // 6. 페이지 전환 시 스타일 전환 + title 설정 + 인증 가드
   router.beforeEach(async (to) => {
     styleInjector.switchPage(`page-${String(to.name)}`)
 
-    if (authGuard.isEnabled()) {
-      const name = String(to.name)
-      if (!requiresAuthCache.has(name)) {
-        const record = recordByName.get(name)
-        if (record) {
-          const sfc = await loadSfc(record)
-          requiresAuthCache.set(name, !!(sfc.componentOptions as Record<string, unknown>).requiresAuth)
-        }
-      }
-      if (requiresAuthCache.get(name) && !authGuard.isAuthenticated()) {
-        return authGuard.getLoginPage()
-      }
+    const name = String(to.name)
+    const record = recordByName.get(name)
+
+    if (record && (!titleCache.has(name) || !requiresAuthCache.has(name))) {
+      const sfc = await loadSfc(record)
+      const opts = sfc.componentOptions as Record<string, unknown>
+      if (!titleCache.has(name)) titleCache.set(name, (opts.title as string) ?? null)
+      if (!requiresAuthCache.has(name)) requiresAuthCache.set(name, !!opts.requiresAuth)
+    }
+
+    const title = titleCache.get(name)
+    if (title) document.title = title
+
+    if (authGuard.isEnabled() && requiresAuthCache.get(name) && !authGuard.isAuthenticated()) {
+      return authGuard.getLoginPage()
     }
   })
 
