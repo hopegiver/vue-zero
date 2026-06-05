@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "defaultMode": "bypassPermissions",
+    "deny": [
+      "Bash(rm -rf *)",
+      "Bash(rm -r /*)",
+      "Bash(del /f /s /q *)",
+      "Bash(rd /s /q *)",
+      "Bash(format *)",
+      "Bash(mkfs*)",
+      "Bash(dd if=* of=/dev/*)",
+      "Bash(:(){ :|:& };:)",
+      "Bash(chmod -R 777 /*)",
+      "Bash(chown -R * /*)",
+      "Bash(> /dev/sda*)",
+      "Bash(shred *)",
+      "Bash(wipefs *)"
+    ]
+  }
+}
