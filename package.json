@@ -1,0 +1,28 @@
+{
+  "name": "vue-zero",
+  "version": "0.1.0",
+  "description": "Zero-build Vue 3 router for AI-driven development",
+  "main": "dist/vue-zero.js",
+  "type": "module",
+  "scripts": {
+    "serve": "npx serve .",
+    "dev": "node --watch build.js",
+    "build": "node build.js"
+  },
+  "keywords": [
+    "vue",
+    "router",
+    "zero-build",
+    "no-build"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "esbuild": "^0.28.0",
+    "typescript": "^6.0.3",
+    "vue": "^3.5.35",
+    "vue-router": "^5.1.0"
+  },
+  "dependencies": {
+    "hono": "^4.12.23"
+  }
+}
