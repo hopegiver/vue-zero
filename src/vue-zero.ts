@@ -78,6 +78,10 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const recordByName = new Map(records.map(r => [r.name, r]))
   const styleInjector = getStyleInjector()
 
+  // pages/404.vue 존재 여부 확인
+  const notFoundUrl = `${pagesDir}/404.vue`
+  const has404 = (await fetch(notFoundUrl, { method: 'HEAD' })).ok
+
   async function loadSfc(record: (typeof records)[number]) {
     if (sfcCache.has(record.name)) return sfcCache.get(record.name)!
     try {
@@ -127,6 +131,30 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       return component
     },
   }))
+
+  if (has404) {
+    routes.push({
+      path: '/:pathMatch(.*)*',
+      name: '404',
+      component: async () => {
+        if (componentCache.has('404')) return componentCache.get('404')!
+        const { template, style, componentOptions } = await parseSfc(notFoundUrl, 'page-404', 'page')
+        if (style) styleInjector.inject(style, 'page-404', 'page')
+        const layoutName: string = (componentOptions as Record<string, unknown>).layout as string ?? 'default'
+        const layoutTemplate = await loadLayout(layoutName)
+        let finalTemplate = template
+        if (layoutTemplate) {
+          finalTemplate = layoutTemplate.includes('<slot />') || layoutTemplate.includes('<slot/>')
+            ? layoutTemplate.replace(/<slot\s*\/>/, template)
+            : layoutTemplate + template
+        }
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const component = Vue.defineComponent({ ...(componentOptions as any), name: '404', template: finalTemplate, components: globalComponents as any })
+        componentCache.set('404', component)
+        return component
+      },
+    })
+  }
 
   // 5. 라우터 생성
   const router = VueRouter.createRouter({
