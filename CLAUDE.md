@@ -81,13 +81,16 @@ Hono 기반 3-레이어 구조가 표준입니다.
 
 ```
 api/
-├── index.js          # Hono 앱 진입점 — 라우터 등록
-├── routes/           # HTTP 엔드포인트 정의
+├── index.js              # Hono 앱 진입점 — 라우터 등록
+├── middleware/
+│   └── auth.js           # JWT 검증 미들웨어 + signJwt 발급 함수
+├── routes/               # HTTP 엔드포인트 정의
+│   ├── auth.js           # POST /api/auth/login, /api/auth/logout
 │   └── users.js
-├── dao/              # 데이터 접근 (DB 쿼리, KV 읽기/쓰기)
+├── dao/                  # 데이터 접근 (DB 쿼리, KV 읽기/쓰기)
 │   └── users.js
 └── utils/
-    └── response.js   # ok / notFound / badRequest / serverError 헬퍼
+    └── response.js       # ok / notFound / badRequest / unauthorized / serverError
 ```
 
 ### api/index.js
@@ -95,30 +98,61 @@ api/
 ```js
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import authRouter from './routes/auth.js'
 import usersRouter from './routes/users.js'
 
 const app = new Hono()
 
 app.use('/api/*', cors())
+app.route('/api/auth', authRouter)
 app.route('/api/users', usersRouter)
 
 export default app
 ```
+
+### api/middleware/auth.js
+
+JWT 검증 미들웨어와 발급 함수를 제공한다. 외부 라이브러리 없이 Web Crypto API(Cloudflare Workers 기본 지원)만 사용한다.
+
+```js
+import { authMiddleware, signJwt } from '../middleware/auth.js'
+
+// 보호가 필요한 라우트에 미들웨어 추가
+router.get('/me', authMiddleware, (c) => {
+  const user = c.get('user')  // { sub, email, role, exp, iat }
+  return c.json({ user })
+})
+
+// 로그인 핸들러에서 토큰 발급
+const token = await signJwt({ sub: user.id, email: user.email }, c.env.JWT_SECRET)
+```
+
+`JWT_SECRET`은 `wrangler secret put JWT_SECRET`으로 등록한다.
+
+### api/routes/auth.js
+
+```js
+// POST /api/auth/login  → { token }
+// POST /api/auth/logout → { ok: true }
+```
+
+로그인 성공 시 JWT를 발급한다. 클라이언트는 `localStorage.token`에 저장하고 이후 요청에 `Authorization: Bearer <token>` 헤더를 포함한다.
 
 ### api/routes/users.js
 
 ```js
 import { Hono } from 'hono'
 import * as usersDao from '../dao/users.js'
+import { authMiddleware } from '../middleware/auth.js'
 import { notFound } from '../utils/response.js'
 
 const router = new Hono()
 
-router.get('/', (c) => {
+router.get('/', authMiddleware, (c) => {
   return c.json({ users: usersDao.findAll() })
 })
 
-router.get('/:id', (c) => {
+router.get('/:id', authMiddleware, (c) => {
   const user = usersDao.findById(c.req.param('id'))
   if (!user) return notFound(c)
   return c.json({ user })
@@ -130,13 +164,8 @@ export default router
 ### api/dao/users.js
 
 ```js
-export function findAll() {
-  return []
-}
-
-export function findById(id) {
-  return null
-}
+export function findAll() { return [] }
+export function findById(id) { return null }
 ```
 
 ### api/utils/response.js
@@ -145,6 +174,7 @@ export function findById(id) {
 export const ok = (c, data) => c.json(data)
 export const notFound = (c, msg = 'Not found') => c.json({ error: msg }, 404)
 export const badRequest = (c, msg = 'Bad request') => c.json({ error: msg }, 400)
+export const unauthorized = (c, msg = 'Unauthorized') => c.json({ error: msg }, 401)
 export const serverError = (c, msg = 'Internal server error') => c.json({ error: msg }, 500)
 ```
 

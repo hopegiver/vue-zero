@@ -26,10 +26,13 @@
 ├── wrangler.toml
 ├── api/                      # 백엔드 (Hono + Cloudflare Workers)
 │   ├── index.js              # Hono 앱 진입점 — 라우터 등록
+│   ├── middleware/
+│   │   └── auth.js           # JWT 검증 미들웨어 + signJwt
 │   ├── routes/               # HTTP 엔드포인트 정의
+│   │   └── auth.js           # POST /api/auth/login, /logout
 │   ├── dao/                  # 데이터 접근 (DB 쿼리, KV 읽기/쓰기)
 │   └── utils/
-│       └── response.js       # ok / notFound / badRequest / serverError
+│       └── response.js       # ok / notFound / badRequest / unauthorized / serverError
 └── app/                      # 프론트엔드 (vue-zero)
     ├── index.html
     ├── pages/
@@ -185,6 +188,27 @@ export default {
 | 메서드 | 경로 | 설명 | 인증 |
 |--------|------|------|------|
 | GET    | /api/health | 헬스체크 | 불필요 |
+
+### 인증이 필요한 엔드포인트 패턴
+
+```js
+import { authMiddleware } from '../middleware/auth.js'
+
+// authMiddleware를 핸들러 앞에 추가하면 끝
+router.get('/me', authMiddleware, (c) => {
+  const user = c.get('user')  // { sub, email, role }
+  return c.json({ user })
+})
+```
+
+프론트엔드에서 API 호출 시 헤더 포함:
+
+```js
+// composables/useApi.js 패턴
+const res = await fetch('/api/users', {
+  headers: { Authorization: `Bearer ${localStorage.token}` }
+})
+```
 
 ### 새 API 추가 패턴
 
