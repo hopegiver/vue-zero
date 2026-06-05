@@ -106,8 +106,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
         styleInjector.inject(style, `page-${record.name}`, 'page')
       }
 
-      const layoutName: string = (componentOptions as Record<string, unknown>).layout as string ?? 'default'
-      const layoutTemplate = await loadLayout(layoutName)
+      const layoutOption = (componentOptions as Record<string, unknown>).layout
+      const layoutName: string | false = layoutOption === false ? false : (layoutOption as string) ?? 'default'
+      const layoutTemplate = layoutName === false ? null : await loadLayout(layoutName)
 
       let finalTemplate = template
       if (layoutTemplate) {
@@ -140,8 +141,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
         if (componentCache.has('404')) return componentCache.get('404')!
         const { template, style, componentOptions } = await parseSfc(notFoundUrl, 'page-404', 'page')
         if (style) styleInjector.inject(style, 'page-404', 'page')
-        const layoutName: string = (componentOptions as Record<string, unknown>).layout as string ?? 'default'
-        const layoutTemplate = await loadLayout(layoutName)
+        const layoutOption404 = (componentOptions as Record<string, unknown>).layout
+        const layoutName404: string | false = layoutOption404 === false ? false : (layoutOption404 as string) ?? 'default'
+        const layoutTemplate = layoutName404 === false ? null : await loadLayout(layoutName404)
         let finalTemplate = template
         if (layoutTemplate) {
           finalTemplate = layoutTemplate.includes('<slot />') || layoutTemplate.includes('<slot/>')
