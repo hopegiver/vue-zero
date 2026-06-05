@@ -75,32 +75,77 @@ compatibility_date = "2024-01-01"
 directory = "./app"
 ```
 
-## api/index.js 기본 구조
+## api/ 폴더 구조
+
+Hono 기반 3-레이어 구조가 표준입니다.
+
+```
+api/
+├── index.js          # Hono 앱 진입점 — 라우터 등록
+├── routes/           # HTTP 엔드포인트 정의
+│   └── users.js
+├── dao/              # 데이터 접근 (DB 쿼리, KV 읽기/쓰기)
+│   └── users.js
+└── utils/
+    └── response.js   # ok / notFound / badRequest / serverError 헬퍼
+```
+
+### api/index.js
 
 ```js
-export default {
-  async fetch(request, env) {
-    const url = new URL(request.url)
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import usersRouter from './routes/users.js'
 
-    // /api/* → 백엔드 핸들러
-    if (url.pathname.startsWith('/api/')) {
-      return handleApi(request, env)
-    }
+const app = new Hono()
 
-    // 나머지 → app/ 정적 파일 (자동 fallback → index.html)
-    return env.ASSETS.fetch(request)
-  }
+app.use('/api/*', cors())
+app.route('/api/users', usersRouter)
+
+export default app
+```
+
+### api/routes/users.js
+
+```js
+import { Hono } from 'hono'
+import * as usersDao from '../dao/users.js'
+import { notFound } from '../utils/response.js'
+
+const router = new Hono()
+
+router.get('/', (c) => {
+  return c.json({ users: usersDao.findAll() })
+})
+
+router.get('/:id', (c) => {
+  const user = usersDao.findById(c.req.param('id'))
+  if (!user) return notFound(c)
+  return c.json({ user })
+})
+
+export default router
+```
+
+### api/dao/users.js
+
+```js
+export function findAll() {
+  return []
 }
 
-async function handleApi(request, env) {
-  const url = new URL(request.url)
-
-  if (url.pathname === '/api/users') {
-    return Response.json({ users: [] })
-  }
-
-  return Response.json({ error: 'Not found' }, { status: 404 })
+export function findById(id) {
+  return null
 }
+```
+
+### api/utils/response.js
+
+```js
+export const ok = (c, data) => c.json(data)
+export const notFound = (c, msg = 'Not found') => c.json({ error: msg }, 404)
+export const badRequest = (c, msg = 'Bad request') => c.json({ error: msg }, 400)
+export const serverError = (c, msg = 'Internal server error') => c.json({ error: msg }, 500)
 ```
 
 ## 동적 라우트 파일명 규칙 (Nuxt 동일)

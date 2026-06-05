@@ -16,7 +16,7 @@
 ## 기술 스택
 
 - 프론트엔드: vue-zero (Vue 3 Options API, 제로빌드)
-- 백엔드: Cloudflare Workers
+- 백엔드: Hono + Cloudflare Workers
 - 배포: Cloudflare (wrangler deploy)
 
 ## 폴더 구조
@@ -24,9 +24,13 @@
 ```
 [프로젝트명]/
 ├── wrangler.toml
-├── api/
-│   └── index.js
-└── app/
+├── api/                      # 백엔드 (Hono + Cloudflare Workers)
+│   ├── index.js              # Hono 앱 진입점 — 라우터 등록
+│   ├── routes/               # HTTP 엔드포인트 정의
+│   ├── dao/                  # 데이터 접근 (DB 쿼리, KV 읽기/쓰기)
+│   └── utils/
+│       └── response.js       # ok / notFound / badRequest / serverError
+└── app/                      # 프론트엔드 (vue-zero)
     ├── index.html
     ├── pages/
     │   └── pages.json
@@ -181,6 +185,51 @@ export default {
 | 메서드 | 경로 | 설명 | 인증 |
 |--------|------|------|------|
 | GET    | /api/health | 헬스체크 | 불필요 |
+
+### 새 API 추가 패턴
+
+엔드포인트를 추가할 때는 아래 3단계를 순서대로 진행한다.
+
+**1. `api/dao/[리소스].js` 생성 — 데이터 접근 함수**
+
+```js
+// api/dao/posts.js
+export function findAll() { return [] }
+export function findById(id) { return null }
+export function create(data) { return { id: 1, ...data } }
+```
+
+**2. `api/routes/[리소스].js` 생성 — 엔드포인트 정의**
+
+```js
+// api/routes/posts.js
+import { Hono } from 'hono'
+import * as postsDao from '../dao/posts.js'
+import { notFound, badRequest } from '../utils/response.js'
+
+const router = new Hono()
+
+router.get('/', (c) => c.json({ posts: postsDao.findAll() }))
+router.get('/:id', (c) => {
+  const post = postsDao.findById(c.req.param('id'))
+  if (!post) return notFound(c)
+  return c.json({ post })
+})
+router.post('/', async (c) => {
+  const body = await c.req.json()
+  if (!body.title) return badRequest(c, 'title is required')
+  return c.json({ post: postsDao.create(body) }, 201)
+})
+
+export default router
+```
+
+**3. `api/index.js`에 라우터 등록**
+
+```js
+import postsRouter from './routes/posts.js'
+app.route('/api/posts', postsRouter)
+```
 
 ## 인증
 
