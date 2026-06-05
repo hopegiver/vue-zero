@@ -25,14 +25,14 @@
 
 ```
 src/
-├── vue-zero.js              # 메인 진입점 — createApp() 단일 API
+├── vue-zero.ts              # 메인 진입점 — createApp() 단일 API
 ├── core/
-│   ├── SfcParser.js         # .vue 파일 fetch → template/script/style 분리
-│   ├── RouteScanner.js      # pages/ 스캔 → 라우트 자동 등록
-│   ├── ComponentLoader.js   # components/ 스캔 → 전역 컴포넌트 자동 등록
-│   └── AuthGuard.js         # JWT 기반 경량 인증 가드
+│   ├── SfcParser.ts         # .vue 파일 fetch → template/script/style 분리
+│   ├── RouteScanner.ts      # pages/ 스캔 → 라우트 자동 등록
+│   ├── ComponentLoader.ts   # components/ 스캔 → 전역 컴포넌트 자동 등록
+│   └── AuthGuard.ts         # JWT 기반 경량 인증 가드
 └── utils/
-    └── StyleInjector.js     # <style> 블록 → DOM <style> 태그 주입
+    └── StyleInjector.ts     # <style> 블록 → DOM <style> 태그 주입
 ```
 
 ## 사용자 앱 폴더 구조
@@ -103,13 +103,6 @@ async function handleApi(request, env) {
 }
 ```
 
-## 개발 및 배포 명령어
-
-```bash
-wrangler dev     # 프론트+백엔드 동시 로컬 개발
-wrangler deploy  # 프로덕션 배포
-```
-
 ## 동적 라우트 파일명 규칙 (Nuxt 동일)
 
 | 파일 경로 | 라우트 경로 |
@@ -139,9 +132,20 @@ export default {
 
 Vue 3 표준과 다른 점은 이것뿐이다. 나머지는 Vue 3 표준 그대로.
 
-### 규칙 1 — 파일을 만들면 JSON에 등록
+### 규칙 1 — 파일을 만들면 JSON에 등록 ⚠️ 가장 흔한 실수
 
-`pages/`에 `.vue`를 만들면 `pages/pages.json`에, `components/`에 `.vue`를 만들면 `components/components.json`에 이름을 추가한다. 등록하지 않으면 동작하지 않는다.
+**`.vue` 파일 생성과 JSON 등록은 항상 함께 해야 한다. 파일만 만들면 동작하지 않는다.**
+
+- `pages/`에 `.vue`를 만들면 → `pages/pages.json`에 이름 추가
+- `components/`에 `.vue`를 만들면 → `components/components.json`에 이름 추가
+- `.vue`를 삭제하면 → JSON에서도 반드시 제거
+
+등록 누락 시 브라우저 콘솔에 경고가 출력된다.
+
+```json
+// pages/pages.json — contact.vue 추가 후 반드시 함께 업데이트
+["index", "about", "contact"]
+```
 
 ### 규칙 2 — 레이아웃
 
@@ -298,7 +302,6 @@ export default {
   data() { ... }
 }
 </script>
-```
 ```
 
 ## 외부 라이브러리 연동 (CDN)

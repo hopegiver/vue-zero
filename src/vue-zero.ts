@@ -68,64 +68,62 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     console.warn('[vue-zero] No pages found. Create pages/pages.json: ["index", "about", ...]')
   }
 
-  // 4. 모든 페이지 SFC를 미리 파싱 — requiresAuth/layout을 라우트 등록 전에 확보
+  // 4. Vue Router 라우트 배열 생성 — SFC는 실제 라우팅 시점에 lazy 로드
   const sfcCache = new Map<string, Awaited<ReturnType<typeof parseSfc>>>()
-  await Promise.all(records.map(async record => {
-    try {
-      sfcCache.set(record.name, await parseSfc(record.filePath, `page-${record.name}`, 'page'))
-    } catch (e) {
-      console.error(`[vue-zero] failed to load page "${record.filePath}"`, e)
-    }
-  }))
-
-  // 5. Vue Router 라우트 배열 생성 (컴포넌트 캐시)
   const componentCache = new Map<string, ReturnType<typeof Vue.defineComponent>>()
+  const requiresAuthCache = new Map<string, boolean>()  // 라우트명 → requiresAuth (첫 방문 후 고정)
+  const recordByName = new Map(records.map(r => [r.name, r]))
   const styleInjector = getStyleInjector()
-  const routes: import('vue-router').RouteRecordRaw[] = records.map(record => {
-    const sfc = sfcCache.get(record.name)
-    const opts = sfc?.componentOptions as Record<string, unknown> ?? {}
-    return {
-      path: record.path,
-      name: record.name,
-      meta: { requiresAuth: !!opts.requiresAuth },
-      component: async () => {
-        if (componentCache.has(record.name)) return componentCache.get(record.name)!
 
-        const { template, style, componentOptions } = sfcCache.get(record.name)!
-
-        // 페이지 스타일 미리 주입 (캐시 이후엔 inject가 no-op)
-        if (style) {
-          styleInjector.inject(style, `page-${record.name}`, 'page')
-        }
-
-        // 레이아웃 결정
-        const layoutName: string = (componentOptions as Record<string, unknown>).layout as string ?? 'default'
-        const layoutTemplate = await loadLayout(layoutName)
-
-        // 레이아웃 + 페이지 template 합성: <slot /> 위치에 삽입
-        let finalTemplate = template
-        if (layoutTemplate) {
-          if (layoutTemplate.includes('<slot />') || layoutTemplate.includes('<slot/>')) {
-            finalTemplate = layoutTemplate.replace(/<slot\s*\/>/, template)
-          } else {
-            console.warn(`[vue-zero] layout "${layoutName}.vue" has no <slot /> — appending page after layout`)
-            finalTemplate = layoutTemplate + template
-          }
-        }
-
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const component = Vue.defineComponent({
-          ...(componentOptions as any),
-          name: record.name,
-          template: finalTemplate,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          components: globalComponents as any,
-        })
-        componentCache.set(record.name, component)
-        return component
-      },
+  async function loadSfc(record: (typeof records)[number]) {
+    if (sfcCache.has(record.name)) return sfcCache.get(record.name)!
+    try {
+      const sfc = await parseSfc(record.filePath, `page-${record.name}`, 'page')
+      sfcCache.set(record.name, sfc)
+      return sfc
+    } catch {
+      console.error(`[vue-zero] pages.json에 "${record.name}"이 등록되어 있지만 파일을 찾을 수 없습니다: ${record.filePath}`)
+      throw new Error(`page not found: ${record.filePath}`)
     }
-  })
+  }
+
+  const routes: import('vue-router').RouteRecordRaw[] = records.map(record => ({
+    path: record.path,
+    name: record.name,
+    component: async () => {
+      if (componentCache.has(record.name)) return componentCache.get(record.name)!
+
+      const { template, style, componentOptions } = await loadSfc(record)
+
+      if (style) {
+        styleInjector.inject(style, `page-${record.name}`, 'page')
+      }
+
+      const layoutName: string = (componentOptions as Record<string, unknown>).layout as string ?? 'default'
+      const layoutTemplate = await loadLayout(layoutName)
+
+      let finalTemplate = template
+      if (layoutTemplate) {
+        if (layoutTemplate.includes('<slot />') || layoutTemplate.includes('<slot/>')) {
+          finalTemplate = layoutTemplate.replace(/<slot\s*\/>/, template)
+        } else {
+          console.warn(`[vue-zero] layout "${layoutName}.vue" has no <slot /> — appending page after layout`)
+          finalTemplate = layoutTemplate + template
+        }
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const component = Vue.defineComponent({
+        ...(componentOptions as any),
+        name: record.name,
+        template: finalTemplate,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        components: globalComponents as any,
+      })
+      componentCache.set(record.name, component)
+      return component
+    },
+  }))
 
   // 5. 라우터 생성
   const router = VueRouter.createRouter({
@@ -134,11 +132,19 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   })
 
   // 6. 페이지 전환 시 이전 페이지 스타일 전환 + 인증 가드
-  router.beforeEach((to) => {
+  router.beforeEach(async (to) => {
     styleInjector.switchPage(`page-${String(to.name)}`)
 
     if (authGuard.isEnabled()) {
-      if (to.meta.requiresAuth && !authGuard.isAuthenticated()) {
+      const name = String(to.name)
+      if (!requiresAuthCache.has(name)) {
+        const record = recordByName.get(name)
+        if (record) {
+          const sfc = await loadSfc(record)
+          requiresAuthCache.set(name, !!(sfc.componentOptions as Record<string, unknown>).requiresAuth)
+        }
+      }
+      if (requiresAuthCache.get(name) && !authGuard.isAuthenticated()) {
         return authGuard.getLoginPage()
       }
     }

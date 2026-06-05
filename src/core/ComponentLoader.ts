@@ -33,8 +33,8 @@ export class ComponentLoader {
       names.map(async name => {
         try {
           result[name] = await this.load(name)
-        } catch (e) {
-          console.warn(`[vue-zero] ComponentLoader: failed to load ${name}`, e)
+        } catch {
+          console.error(`[vue-zero] components.json에 "${name}"이 등록되어 있지만 파일을 찾을 수 없습니다: ${this.componentsDir}/${name}.vue`)
         }
       })
     )
