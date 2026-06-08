@@ -74,6 +74,7 @@ compatibility_date = "2024-01-01"
 [assets]
 directory = "./app"
 not_found_handling = "single-page-application"
+run_worker_first = ["/api/*"]
 ```
 
 ## api/ 폴더 구조
