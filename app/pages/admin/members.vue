@@ -60,14 +60,17 @@ export default {
       search: '',
       roleFilter: '',
       deleteTarget: null,
-      members: [
-        { id: 1, name: '김철수', email: 'kim@example.com', role: 'admin', joinDate: '2024-01-15' },
-        { id: 2, name: '이영희', email: 'lee@example.com', role: 'user', joinDate: '2024-02-20' },
-        { id: 3, name: '박민수', email: 'park@example.com', role: 'user', joinDate: '2024-03-10' },
-        { id: 4, name: '최지은', email: 'choi@example.com', role: 'banned', joinDate: '2024-04-05' },
-        { id: 5, name: '정하늘', email: 'jung@example.com', role: 'user', joinDate: '2024-05-12' },
-        { id: 6, name: '강서윤', email: 'kang@example.com', role: 'admin', joinDate: '2024-06-01' },
-      ]
+      members: [],
+    }
+  },
+  async mounted() {
+    try {
+      const res = await fetch('/api/members')
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      this.members = data.members
+    } catch {
+      this.members = []
     }
   },
   computed: {

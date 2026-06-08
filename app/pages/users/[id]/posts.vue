@@ -25,14 +25,16 @@ export default {
   async mounted() {
     const id = this.$route.params.id
     this.userName = '유저 ' + id
-    // 샘플 데이터
-    await new Promise(r => setTimeout(r, 300))
-    this.posts = [
-      { id: 1, title: '첫 번째 게시글' },
-      { id: 2, title: '두 번째 게시글' },
-      { id: 3, title: 'Vue.js 시작하기' },
-    ]
-    this.loading = false
+    try {
+      const res = await fetch(`/api/users/${id}/posts`)
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      this.posts = data.posts
+    } catch {
+      this.posts = []
+    } finally {
+      this.loading = false
+    }
   }
 }
 </script>

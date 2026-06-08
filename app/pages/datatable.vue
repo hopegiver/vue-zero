@@ -87,18 +87,15 @@ export default {
     searchText() { this.page = 1 },
     perPage() { this.page = 1 },
   },
-  mounted() {
-    const names = ['김철수','이영희','박민수','최지은','정하늘','강서윤','윤도현','임수아','한재민','오유진',
-                   '배성호','조은비','송태양','류미래','권지훈','황보람','안세진','문하은','장동욱','노시연']
-    const roles = ['개발자','디자이너','PM','QA','마케터']
-    const statuses = ['active','inactive','pending']
-    this.items = names.map((name, i) => ({
-      id: i + 1,
-      name,
-      role: roles[i % roles.length],
-      score: Math.floor(Math.random() * 100) + 1,
-      status: statuses[i % statuses.length],
-    }))
+  async mounted() {
+    try {
+      const res = await fetch('/api/members/table')
+      if (!res.ok) throw new Error()
+      const data = await res.json()
+      this.items = data.items
+    } catch {
+      this.items = []
+    }
   },
   methods: {
     sortBy(key) {

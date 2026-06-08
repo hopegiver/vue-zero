@@ -109,12 +109,30 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     return sfc
   }
 
+  const HTML_RESERVED = new Set([
+    'html','body','head','base','meta','link','style','script','noscript',
+    'template','slot','component',
+    'div','span','p','a','br','hr','img','input','button','select','option',
+    'textarea','form','label','fieldset','legend','table','thead','tbody',
+    'tfoot','tr','th','td','caption','colgroup','col',
+    'ul','ol','li','dl','dt','dd',
+    'h1','h2','h3','h4','h5','h6',
+    'header','footer','main','nav','section','article','aside',
+    'details','summary','dialog','figure','figcaption',
+    'video','audio','source','canvas','svg','iframe','embed','object',
+    'pre','code','blockquote','strong','em','small','sub','sup','mark',
+  ])
+
   function buildPageComponent(
     name: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sfc: { template: string; componentOptions: any },
   ) {
     if (componentCache.has(name)) return componentCache.get(name)!
+
+    if (HTML_RESERVED.has(name)) {
+      console.error(`[vue-zero] 페이지 파일명 "${name}"은 HTML 예약 태그와 충돌합니다. 파일명을 변경하세요.`)
+    }
 
     const comp = Vue.defineComponent({
       ...sfc.componentOptions,

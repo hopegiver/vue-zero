@@ -5,7 +5,7 @@
       <form @submit.prevent="login">
         <input v-model="email" type="email" placeholder="이메일" />
         <input v-model="password" type="password" placeholder="비밀번호" />
-        <AppButton @click="login">로그인</AppButton>
+        <AppButton>로그인</AppButton>
       </form>
       <p v-if="error" class="error">{{ error }}</p>
     </div>

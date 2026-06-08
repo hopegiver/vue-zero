@@ -14,7 +14,7 @@
         <li><router-link to="/minimal">Minimal</router-link> — script 없는 순수 템플릿</li>
         <li><router-link to="/todo">Todo</router-link> — CRUD + 필터 + 인라인 편집</li>
         <li><router-link to="/dashboard">Dashboard</router-link> — 그리드 레이아웃 + requiresAuth</li>
-        <li><router-link to="/table">Table</router-link> — 정렬 + 검색 + 페이지네이션</li>
+        <li><router-link to="/datatable">DataTable</router-link> — 정렬 + 검색 + 페이지네이션</li>
         <li><router-link to="/tabs?tab=profile">Tabs</router-link> — 탭 UI + 쿼리스트링 동기화</li>
         <li><router-link to="/gallery">Gallery</router-link> — 그리드/리스트 뷰 전환 + 모달</li>
         <li><router-link to="/timer">Timer</router-link> — setInterval + beforeUnmount 정리</li>
