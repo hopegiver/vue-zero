@@ -31,6 +31,38 @@ function validateOptions(options: CreateAppOptions): void {
   }
 }
 
+const PROGRESS_STYLE = `
+.vue-zero-progress {
+  position: fixed; top: 0; left: 0; right: 0; height: 3px; z-index: 99999;
+  background: #42b883; transform-origin: left; transform: scaleX(0);
+  transition: transform 0.2s ease; pointer-events: none;
+}
+.vue-zero-progress.loading { transform: scaleX(0.8); transition: transform 8s cubic-bezier(0.1, 0.05, 0, 1); }
+.vue-zero-progress.done { transform: scaleX(1); opacity: 0; transition: transform 0.1s ease, opacity 0.4s ease 0.1s; }
+`
+
+function createProgressBar(): { start: () => void; done: () => void } {
+  const style = document.createElement('style')
+  style.textContent = PROGRESS_STYLE
+  document.head.appendChild(style)
+
+  const bar = document.createElement('div')
+  bar.className = 'vue-zero-progress'
+  document.body.appendChild(bar)
+
+  return {
+    start() {
+      bar.className = 'vue-zero-progress'
+      void bar.offsetWidth
+      bar.classList.add('loading')
+    },
+    done() {
+      bar.classList.remove('loading')
+      bar.classList.add('done')
+    },
+  }
+}
+
 export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   validateOptions(options)
 
@@ -41,6 +73,8 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const authGuard = new AuthGuard(options.auth)
   const componentLoader = new ComponentLoader(componentsDir)
   const routeScanner = new RouteScanner(pagesDir)
+  const styleInjector = getStyleInjector()
+  const progress = createProgressBar()
 
   // 1. components.json + pages.json 병렬 fetch
   const [compNames, records] = await Promise.all([
@@ -48,88 +82,91 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     routeScanner.scan(),
   ])
 
-  // 2. 전역 컴포넌트 로드 (pages.json 결과와 무관하게 병렬 처리됨)
+  // 2. 전역 컴포넌트 로드
   const globalComponents = await componentLoader.loadAll(compNames)
-
-  // 3. 레이아웃 로드 (캐시)
-  const layoutCache = new Map<string, string | null>()
-  async function loadLayout(name: string): Promise<string | null> {
-    if (layoutCache.has(name)) return layoutCache.get(name)!
-    const url = `${layoutsDir}/${name}.vue`
-    try {
-      const { template } = await parseSfc(url, `layout-${name}`, 'layout')
-      layoutCache.set(name, template)
-      return template
-    } catch {
-      layoutCache.set(name, null)
-      return null
-    }
-  }
 
   if (records.length === 0) {
     console.warn('[vue-zero] No pages found. Create pages/pages.json: ["index", "about", ...]')
   }
 
-  // 4. Vue Router 라우트 배열 생성 — SFC는 실제 라우팅 시점에 lazy 로드
+  // 3. 캐시
   const sfcCache = new Map<string, Awaited<ReturnType<typeof parseSfc>>>()
   const componentCache = new Map<string, ReturnType<typeof Vue.defineComponent>>()
-  const requiresAuthCache = new Map<string, boolean>()  // 라우트명 → requiresAuth (첫 방문 후 고정)
-  const titleCache = new Map<string, string | null>()   // 라우트명 → title (첫 방문 후 고정)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const layoutComponentCache = new Map<string, any>()
+  const layoutNameCache = new Map<string, string | false>()
+  const titleCache = new Map<string, string | null>()
+  const requiresAuthCache = new Map<string, boolean>()
   const recordByName = new Map(records.map(r => [r.name, r]))
-  const styleInjector = getStyleInjector()
 
-  // pages/404.vue 존재 여부 확인
-  const notFoundUrl = `${pagesDir}/404.vue`
-  const has404 = (await fetch(notFoundUrl, { method: 'HEAD' })).ok
+  // 4. SFC/컴포넌트 로더
+  async function loadSfc(name: string, filePath: string) {
+    if (sfcCache.has(name)) return sfcCache.get(name)!
+    const sfc = await parseSfc(filePath, `page-${name}`, 'page')
+    sfcCache.set(name, sfc)
+    return sfc
+  }
 
-  async function loadSfc(record: (typeof records)[number]) {
-    if (sfcCache.has(record.name)) return sfcCache.get(record.name)!
+  function buildPageComponent(
+    name: string,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    sfc: { template: string; componentOptions: any },
+  ) {
+    if (componentCache.has(name)) return componentCache.get(name)!
+
+    const comp = Vue.defineComponent({
+      ...sfc.componentOptions,
+      name,
+      template: sfc.template,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      components: globalComponents as any,
+    })
+    componentCache.set(name, comp)
+
+    // 페이지 메타 캐시 (layout, title, requiresAuth)
+    const opts = sfc.componentOptions as Record<string, unknown>
+    const layoutOption = opts.layout
+    layoutNameCache.set(name, layoutOption === false ? false : (layoutOption as string) ?? 'default')
+    titleCache.set(name, (opts.title as string) ?? null)
+    requiresAuthCache.set(name, !!opts.requiresAuth)
+
+    return comp
+  }
+
+  async function loadLayoutComponent(name: string) {
+    if (layoutComponentCache.has(name)) return layoutComponentCache.get(name)
+    const url = `${layoutsDir}/${name}.vue`
     try {
-      const sfc = await parseSfc(record.filePath, `page-${record.name}`, 'page')
-      sfcCache.set(record.name, sfc)
-      return sfc
+      const { template, componentOptions } = await parseSfc(url, `layout-${name}`, 'layout')
+      const layoutTemplate = template
+        .replace(/<slot\s*\/>/, '<router-view />')
+        .replace(/<slot><\/slot>/, '<router-view />')
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const comp = Vue.defineComponent({
+        ...(componentOptions as any),
+        name: `layout-${name}`,
+        template: layoutTemplate,
+        components: globalComponents as any,
+      })
+      layoutComponentCache.set(name, comp)
+      return comp
     } catch {
-      console.error(`[vue-zero] pages.json에 "${record.name}"이 등록되어 있지만 파일을 찾을 수 없습니다: ${record.filePath}`)
-      throw new Error(`page not found: ${record.filePath}`)
+      console.warn(`[vue-zero] layout "${name}.vue" not found — rendering page without layout`)
+      layoutComponentCache.set(name, null)
+      return null
     }
   }
+
+  // 5. 라우트 배열 생성
+  const notFoundUrl = `${pagesDir}/404.vue`
+  const has404 = (await fetch(notFoundUrl, { method: 'HEAD' })).ok
 
   const routes: import('vue-router').RouteRecordRaw[] = records.map(record => ({
     path: record.path,
     name: record.name,
     component: async () => {
-      if (componentCache.has(record.name)) return componentCache.get(record.name)!
-
-      const { template, style, componentOptions } = await loadSfc(record)
-
-      if (style) {
-        styleInjector.inject(style, `page-${record.name}`, 'page')
-      }
-
-      const layoutOption = (componentOptions as Record<string, unknown>).layout
-      const layoutName: string | false = layoutOption === false ? false : (layoutOption as string) ?? 'default'
-      const layoutTemplate = layoutName === false ? null : await loadLayout(layoutName)
-
-      let finalTemplate = template
-      if (layoutTemplate) {
-        if (layoutTemplate.includes('<slot />') || layoutTemplate.includes('<slot/>')) {
-          finalTemplate = layoutTemplate.replace(/<slot\s*\/>/, template)
-        } else {
-          console.warn(`[vue-zero] layout "${layoutName}.vue" has no <slot /> — appending page after layout`)
-          finalTemplate = layoutTemplate + template
-        }
-      }
-
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const component = Vue.defineComponent({
-        ...(componentOptions as any),
-        name: record.name,
-        template: finalTemplate,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        components: globalComponents as any,
-      })
-      componentCache.set(record.name, component)
-      return component
+      const sfc = await loadSfc(record.name, record.filePath)
+      return buildPageComponent(record.name, sfc)
     },
   }))
 
@@ -138,62 +175,104 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       path: '/:pathMatch(.*)*',
       name: '404',
       component: async () => {
-        if (componentCache.has('404')) return componentCache.get('404')!
-        const { template, style, componentOptions } = await parseSfc(notFoundUrl, 'page-404', 'page')
-        if (style) styleInjector.inject(style, 'page-404', 'page')
-        const layoutOption404 = (componentOptions as Record<string, unknown>).layout
-        const layoutName404: string | false = layoutOption404 === false ? false : (layoutOption404 as string) ?? 'default'
-        const layoutTemplate = layoutName404 === false ? null : await loadLayout(layoutName404)
-        let finalTemplate = template
-        if (layoutTemplate) {
-          finalTemplate = layoutTemplate.includes('<slot />') || layoutTemplate.includes('<slot/>')
-            ? layoutTemplate.replace(/<slot\s*\/>/, template)
-            : layoutTemplate + template
-        }
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const component = Vue.defineComponent({ ...(componentOptions as any), name: '404', template: finalTemplate, components: globalComponents as any })
-        componentCache.set('404', component)
-        return component
+        const sfc = await loadSfc('404', notFoundUrl)
+        return buildPageComponent('404', sfc)
       },
     })
   }
 
-  // 5. 라우터 생성
+  // 6. 라우터 생성
   const router = VueRouter.createRouter({
-    history: VueRouter.createWebHashHistory(),
+    history: VueRouter.createWebHistory(),
     routes,
   })
 
-  // 6. 페이지 전환 시 스타일 전환 + title 설정 + 인증 가드
+  // 7. 페이지 전환 전에 리소스 준비 (SFC, 레이아웃)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const currentLayout = Vue.shallowRef(null as any)
+  const currentLayoutName = Vue.ref('__pending__')
+
   router.beforeEach(async (to) => {
-    styleInjector.switchPage(`page-${String(to.name)}`)
+    progress.start()
 
     const name = String(to.name)
     const record = recordByName.get(name)
 
-    if (record && (!titleCache.has(name) || !requiresAuthCache.has(name))) {
-      const sfc = await loadSfc(record)
-      const opts = sfc.componentOptions as Record<string, unknown>
-      if (!titleCache.has(name)) titleCache.set(name, (opts.title as string) ?? null)
-      if (!requiresAuthCache.has(name)) requiresAuthCache.set(name, !!opts.requiresAuth)
-    }
+    try {
+      // 페이지 SFC 로드 + 컴포넌트 빌드
+      if (record) {
+        const sfc = await loadSfc(record.name, record.filePath)
+        buildPageComponent(name, sfc)
+      } else if (name === '404' && has404) {
+        const sfc = await loadSfc('404', notFoundUrl)
+        buildPageComponent('404', sfc)
+      }
 
-    const title = titleCache.get(name)
-    if (title) document.title = title
+      // 레이아웃 로드
+      const layoutName = layoutNameCache.get(name)
+      if (layoutName === false) {
+        currentLayout.value = null
+        currentLayoutName.value = '__none__'
+      } else {
+        const resolved = layoutName ?? 'default'
+        const comp = await loadLayoutComponent(resolved)
+        currentLayout.value = comp
+        currentLayoutName.value = resolved
+      }
 
-    if (authGuard.isEnabled() && requiresAuthCache.get(name) && !authGuard.isAuthenticated()) {
-      return authGuard.getLoginPage()
+      // 스타일 전환
+      styleInjector.switchPage(`page-${name}`)
+
+      // title
+      const title = titleCache.get(name)
+      if (title) document.title = title
+
+      // 인증 가드
+      if (authGuard.isEnabled() && requiresAuthCache.get(name) && !authGuard.isAuthenticated()) {
+        progress.done()
+        return authGuard.getLoginPage()
+      }
+    } catch (err) {
+      console.error(`[vue-zero] 페이지 로드 실패: ${to.fullPath}`, err)
+      progress.done()
+      return false
     }
   })
 
-  // 7. Vue 앱 마운트
-  const app = Vue.createApp({})
+  router.afterEach(() => {
+    progress.done()
+  })
+
+  router.onError((err) => {
+    console.error('[vue-zero] navigation error:', err)
+  })
+
+  // 8. LayoutWrapper + 앱 마운트
+  const LayoutWrapper = Vue.defineComponent({
+    name: 'LayoutWrapper',
+    setup() {
+      return { currentLayout, currentLayoutName }
+    },
+    template: `
+      <component v-if="currentLayout" :is="currentLayout" :key="currentLayoutName" />
+      <router-view v-else-if="currentLayoutName !== '__pending__'" />
+    `,
+  })
+
+  const app = Vue.createApp({
+    template: '<LayoutWrapper />',
+    components: { LayoutWrapper },
+  })
   app.use(router)
 
-  // 전역 컴포넌트 등록
+  app.config.errorHandler = (err, instance, info) => {
+    console.error(`[vue-zero] runtime error (${info}):`, err)
+  }
+
   Object.entries(globalComponents).forEach(([name, comp]) => {
     app.component(name, comp as Parameters<typeof app.component>[1])
   })
 
+  await router.isReady()
   app.mount('#app')
 }

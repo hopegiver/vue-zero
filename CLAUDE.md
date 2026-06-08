@@ -73,6 +73,7 @@ compatibility_date = "2024-01-01"
 
 [assets]
 directory = "./app"
+not_found_handling = "single-page-application"
 ```
 
 ## api/ 폴더 구조
@@ -465,7 +466,7 @@ wrangler deploy  # 프로덕션 배포
 
 1. `npm run serve` 로 로컬 서버 실행
 2. `examples/index.html` 브라우저에서 열기
-3. `/#/`, `/#/about`, `/#/users` hash 라우팅 확인
+3. `/`, `/about`, `/users` 라우팅 확인
 4. `components/` 자동 등록 컴포넌트가 페이지에서 동작하는지 확인
 5. `layouts/default.vue` 가 모든 페이지에 적용되는지 확인
 6. 브라우저 콘솔 에러 없음 확인
