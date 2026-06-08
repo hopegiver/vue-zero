@@ -1,1 +1,1 @@
-["index", "about", "users/index", "users/[id]"]
+["index", "about", "contact", "counter", "dashboard", "gallery", "login", "minimal", "search", "settings", "table", "tabs", "timer", "todo", "users/index", "users/[id]", "users/[id]/posts", "admin/index", "admin/members"]

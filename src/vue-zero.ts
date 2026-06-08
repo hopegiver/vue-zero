@@ -7,6 +7,7 @@ declare const Vue: typeof import('vue')
 declare const VueRouter: typeof import('vue-router')
 
 export interface CreateAppOptions {
+  baseDir?: string
   pagesDir?: string
   componentsDir?: string
   layoutsDir?: string
@@ -66,9 +67,10 @@ function createProgressBar(): { start: () => void; done: () => void } {
 export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   validateOptions(options)
 
-  const pagesDir = (options.pagesDir ?? 'pages').replace(/\/$/, '')
-  const componentsDir = (options.componentsDir ?? 'components').replace(/\/$/, '')
-  const layoutsDir = (options.layoutsDir ?? 'layouts').replace(/\/$/, '')
+  const baseDir = (options.baseDir ?? '/').replace(/\/$/, '')
+  const pagesDir = baseDir + '/' + (options.pagesDir ?? 'pages').replace(/^\//, '').replace(/\/$/, '')
+  const componentsDir = baseDir + '/' + (options.componentsDir ?? 'components').replace(/^\//, '').replace(/\/$/, '')
+  const layoutsDir = baseDir + '/' + (options.layoutsDir ?? 'layouts').replace(/^\//, '').replace(/\/$/, '')
 
   const authGuard = new AuthGuard(options.auth)
   const componentLoader = new ComponentLoader(componentsDir)
