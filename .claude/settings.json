@@ -1,4 +1,17 @@
 {
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node -e \"let d='';process.stdin.on('data',c=>d+=c);process.stdin.on('end',()=>{const p=JSON.parse(d).tool_input.file_path||'';if(p.endsWith('.vue'))require('child_process').execSync('node bin/scan.js app',{stdio:'inherit'})})\" || true"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "defaultMode": "bypassPermissions",
     "deny": [

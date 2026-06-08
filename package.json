@@ -3,12 +3,16 @@
   "version": "0.1.0",
   "description": "Zero-build Vue 3 router for AI-driven development",
   "main": "dist/vue-zero.js",
+  "bin": {
+    "vue-zero-scan": "bin/scan.js"
+  },
   "type": "module",
   "scripts": {
     "serve": "npx serve .",
     "dev": "node --watch build.js",
     "build": "node build.js",
-    "test": "npx playwright test"
+    "test": "npx playwright test",
+    "scan": "node bin/scan.js"
   },
   "keywords": [
     "vue",
