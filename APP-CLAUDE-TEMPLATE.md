@@ -24,15 +24,16 @@
 ```
 [프로젝트명]/
 ├── wrangler.toml
-├── api/                      # 백엔드 (Hono + Cloudflare Workers)
-│   ├── index.js              # Hono 앱 진입점 — 라우터 등록
+├── server/                   # 백엔드 (Hono + Cloudflare Workers)
+│   ├── index.js              # Hono 앱 진입점 — 수정 불필요 (안정 파일)
+│   ├── _registry.js          # scan이 자동 생성 — 직접 편집 금지
 │   ├── middleware/
 │   │   └── auth.js           # JWT 검증 미들웨어 + signJwt
-│   ├── routes/               # HTTP 엔드포인트 정의
+│   ├── api/                  # HTTP 엔드포인트 정의 — 파일 추가 시 scan이 자동 등록
 │   │   └── auth.js           # POST /api/auth/login, /logout
 │   ├── dao/                  # 데이터 접근 (DB 쿼리, KV 읽기/쓰기)
 │   └── utils/
-│       └── response.js       # ok / notFound / badRequest / unauthorized / serverError
+│       └── response.js       # notFound / badRequest / unauthorized / serverError
 └── app/                      # 프론트엔드 (vue-zero)
     ├── index.html
     ├── pages/
@@ -212,48 +213,52 @@ const res = await fetch('/api/users', {
 
 ### 새 API 추가 패턴
 
-엔드포인트를 추가할 때는 아래 3단계를 순서대로 진행한다.
+엔드포인트를 추가할 때는 아래 2단계를 순서대로 진행한다. (`npm run scan` 또는 Claude Code hook이 자동 등록)
 
-**1. `api/dao/[리소스].js` 생성 — 데이터 접근 함수**
+**1. `server/dao/[리소스].js` 생성 — 데이터 접근 클래스**
 
 ```js
-// api/dao/posts.js
-export function findAll() { return [] }
-export function findById(id) { return null }
-export function create(data) { return { id: 1, ...data } }
+// server/dao/posts.js
+export default class PostsDao {
+  constructor(env) { this.env = env }
+
+  findAll() { return [] }
+  findById(id) { return null }
+  create(data) { return { id: 1, ...data } }
+}
 ```
 
-**2. `api/routes/[리소스].js` 생성 — 엔드포인트 정의**
+**2. `server/api/[리소스].js` 생성 — 엔드포인트 정의**
 
 ```js
-// api/routes/posts.js
+// server/api/posts.js
 import { Hono } from 'hono'
-import * as postsDao from '../dao/posts.js'
+import PostsDao from '../dao/posts.js'
 import { notFound, badRequest } from '../utils/response.js'
 
 const router = new Hono()
 
-router.get('/', (c) => c.json({ posts: postsDao.findAll() }))
+router.get('/', (c) => {
+  const dao = new PostsDao(c.env)
+  return c.json({ posts: dao.findAll() })
+})
 router.get('/:id', (c) => {
-  const post = postsDao.findById(c.req.param('id'))
+  const dao = new PostsDao(c.env)
+  const post = dao.findById(c.req.param('id'))
   if (!post) return notFound(c)
   return c.json({ post })
 })
 router.post('/', async (c) => {
+  const dao = new PostsDao(c.env)
   const body = await c.req.json()
   if (!body.title) return badRequest(c, 'title is required')
-  return c.json({ post: postsDao.create(body) }, 201)
+  return c.json({ post: dao.create(body) }, 201)
 })
 
 export default router
 ```
 
-**3. `api/index.js`에 라우터 등록**
-
-```js
-import postsRouter from './routes/posts.js'
-app.route('/api/posts', postsRouter)
-```
+scan이 `server/_registry.js`를 자동 생성하므로 `server/index.js`는 수정 불필요.
 
 ## 인증
 
