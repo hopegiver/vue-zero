@@ -20,7 +20,7 @@ const tableData = names.map((name, i) => ({
   status: statuses[i % statuses.length],
 }))
 
-export function findAllMembers() {
+export function findAll() {
   return members
 }
 

@@ -4,7 +4,7 @@ import * as membersDao from '../dao/members.js'
 const router = new Hono()
 
 router.get('/', (c) => {
-  return c.json({ members: membersDao.findAllMembers() })
+  return c.json({ members: membersDao.findAll() })
 })
 
 router.get('/table', (c) => {

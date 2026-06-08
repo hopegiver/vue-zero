@@ -15,7 +15,7 @@ const posts = [
   { id: 3, title: 'Vue.js 시작하기' },
 ]
 
-export function findAllGallery() {
+export function findAll() {
   return items
 }
 

@@ -1,6 +1,7 @@
 import { Hono } from 'hono'
 import * as usersDao from '../dao/users.js'
 import { findPostsByUserId } from '../dao/gallery.js'
+import { notFound } from '../utils/response.js'
 
 const router = new Hono()
 
@@ -10,7 +11,7 @@ router.get('/', (c) => {
 
 router.get('/:id', (c) => {
   const user = usersDao.findById(c.req.param('id'))
-  if (!user) return c.json({ error: 'Not found' }, 404)
+  if (!user) return notFound(c)
   return c.json({ user })
 })
 

@@ -293,4 +293,4 @@ VueZero.createApp({
 |-----------|------|-----|
 | Vue 3 | 프레임워크 | unpkg.com/vue@3/dist/vue.global.js |
 | Vue Router 4 | 라우터 | unpkg.com/vue-router@4/dist/vue-router.global.js |
-| vue-zero | 라우터 자동화 | unpkg.com/vue-zero/dist/vue-zero.js |
+| vue-zero | 라우터 자동화 | unpkg.com/vue-ai-first/dist/vue-zero.js |
