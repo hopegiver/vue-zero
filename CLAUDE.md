@@ -161,18 +161,20 @@ const token = await signJwt({ sub: user.id, email: user.email }, c.env.JWT_SECRE
 
 ```js
 import { Hono } from 'hono'
-import * as usersDao from '../dao/users.js'
+import UsersDao from '../dao/users.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { notFound } from '../utils/response.js'
 
 const router = new Hono()
 
 router.get('/', authMiddleware, (c) => {
-  return c.json({ users: usersDao.findAll() })
+  const dao = new UsersDao(c.env)
+  return c.json({ users: dao.findAll() })
 })
 
 router.get('/:id', authMiddleware, (c) => {
-  const user = usersDao.findById(c.req.param('id'))
+  const dao = new UsersDao(c.env)
+  const user = dao.findById(c.req.param('id'))
   if (!user) return notFound(c)
   return c.json({ user })
 })
@@ -180,20 +182,26 @@ router.get('/:id', authMiddleware, (c) => {
 export default router
 ```
 
-### DAO 네이밍 규칙
+### DAO 클래스 규칙
 
-모든 DAO는 동일한 함수명을 사용한다:
+모든 DAO는 `constructor(env)`로 `c.env`를 받는 클래스다. `this.env`를 통해 DB, KV, 환경변수 등에 접근한다.
+
+표준 메서드명:
 - `findAll()` — 전체 목록
 - `findById(id)` — 단건 조회
 - `create(data)`, `update(id, data)`, `remove(id)` — 필요한 것만
 
-특수 DAO(stats 등)는 고유 함수명 허용하되, 목록 조회는 반드시 `findAll()`.
+특수 DAO(stats 등)는 고유 메서드명 허용하되, 목록 조회는 반드시 `findAll()`.
 
 ### api/dao/users.js
 
 ```js
-export function findAll() { return [] }
-export function findById(id) { return null }
+export default class UsersDao {
+  constructor(env) { this.env = env }
+
+  findAll() { return [] }
+  findById(id) { return null }
+}
 ```
 
 ### api/utils/response.js

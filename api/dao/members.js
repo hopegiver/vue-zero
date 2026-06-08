@@ -20,10 +20,9 @@ const tableData = names.map((name, i) => ({
   status: statuses[i % statuses.length],
 }))
 
-export function findAll() {
-  return members
-}
+export default class MembersDao {
+  constructor(env) { this.env = env }
 
-export function getTableData() {
-  return tableData
+  findAll() { return members }
+  getTableData() { return tableData }
 }

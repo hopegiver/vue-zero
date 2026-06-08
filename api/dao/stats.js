@@ -17,6 +17,8 @@ const activeUsers = [
   { name: '박민수', role: 'PM', color: '#f59e0b' },
 ]
 
-export function getDashboard() {
-  return { stats, notifications, activeUsers }
+export default class StatsDao {
+  constructor(env) { this.env = env }
+
+  getDashboard() { return { stats, notifications, activeUsers } }
 }

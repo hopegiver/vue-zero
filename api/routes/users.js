@@ -1,22 +1,25 @@
 import { Hono } from 'hono'
-import * as usersDao from '../dao/users.js'
-import { findPostsByUserId } from '../dao/gallery.js'
+import UsersDao from '../dao/users.js'
+import GalleryDao from '../dao/gallery.js'
 import { notFound } from '../utils/response.js'
 
 const router = new Hono()
 
 router.get('/', (c) => {
-  return c.json({ users: usersDao.findAll() })
+  const dao = new UsersDao(c.env)
+  return c.json({ users: dao.findAll() })
 })
 
 router.get('/:id', (c) => {
-  const user = usersDao.findById(c.req.param('id'))
+  const dao = new UsersDao(c.env)
+  const user = dao.findById(c.req.param('id'))
   if (!user) return notFound(c)
   return c.json({ user })
 })
 
 router.get('/:id/posts', (c) => {
-  const posts = findPostsByUserId(c.req.param('id'))
+  const dao = new GalleryDao(c.env)
+  const posts = dao.findPostsByUserId(c.req.param('id'))
   return c.json({ posts })
 })
 

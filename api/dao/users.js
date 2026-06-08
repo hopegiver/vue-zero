@@ -4,10 +4,9 @@ const users = [
   { id: 3, name: 'Charlie', email: 'charlie@example.com' },
 ]
 
-export function findAll() {
-  return users
-}
+export default class UsersDao {
+  constructor(env) { this.env = env }
 
-export function findById(id) {
-  return users.find(u => u.id === Number(id)) ?? null
+  findAll() { return users }
+  findById(id) { return users.find(u => u.id === Number(id)) ?? null }
 }

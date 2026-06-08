@@ -15,10 +15,9 @@ const posts = [
   { id: 3, title: 'Vue.js 시작하기' },
 ]
 
-export function findAll() {
-  return items
-}
+export default class GalleryDao {
+  constructor(env) { this.env = env }
 
-export function findPostsByUserId(userId) {
-  return posts
+  findAll() { return items }
+  findPostsByUserId(userId) { return posts }
 }
