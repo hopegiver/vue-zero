@@ -1,45 +1,33 @@
 # [앱 이름] - AI 개발 가이드
 
-> 이 파일은 vue-zero 기반 앱 프로젝트의 CLAUDE.md 템플릿입니다.
-> 프로젝트 루트에 CLAUDE.md로 복사하고 [ ] 항목을 채워서 사용하세요.
-
----
+> vue-zero 기반 앱의 CLAUDE.md 템플릿. 프로젝트 루트에 CLAUDE.md로 복사하고 [ ] 항목을 채워서 사용.
 
 ## 프로젝트 개요
 
 [앱의 목적과 주요 기능을 2-3줄로 작성]
 
-예시:
-> 사내 HR 어드민 시스템. 직원 정보 관리, 근태 조회, 급여 명세 확인 기능을 제공한다.
-> 사용자는 HR 담당자와 일반 직원 두 종류다.
-
 ## 기술 스택
 
 - 프론트엔드: vue-zero (Vue 3 Options API, 제로빌드)
 - 백엔드: Hono + Cloudflare Workers
-- 배포: Cloudflare (wrangler deploy)
+- 배포: Cloudflare (`wrangler deploy`)
 
 ## 폴더 구조
 
 ```
 [프로젝트명]/
 ├── wrangler.toml
-├── server/                   # 백엔드 (Hono + Cloudflare Workers)
-│   ├── index.js              # Hono 앱 진입점 — 수정 불필요 (안정 파일)
-│   ├── _registry.js          # scan이 자동 생성 — 직접 편집 금지
-│   ├── middleware/
-│   │   └── auth.js           # JWT 검증 미들웨어 + signJwt
-│   ├── api/                  # HTTP 엔드포인트 정의 — 파일 추가 시 scan이 자동 등록
-│   │   └── auth.js           # POST /api/auth/login, /logout
-│   ├── dao/                  # 데이터 접근 (DB 쿼리, KV 읽기/쓰기)
-│   └── utils/
-│       └── response.js       # notFound / badRequest / unauthorized / serverError
+├── server/                   # 백엔드 (Nuxt 동일 구조)
+│   ├── index.js              # 안정 파일 — 수정 불필요
+│   ├── _registry.js          # scan 자동 생성 — 편집 금지
+│   ├── middleware/auth.js     # JWT 미들웨어 + signJwt
+│   ├── api/                  # 엔드포인트 — 파일 추가 시 scan이 자동 등록
+│   ├── dao/                  # 데이터 접근 — 여러 api에서 재조합
+│   └── utils/response.js     # notFound / badRequest / unauthorized / serverError
 └── app/                      # 프론트엔드 (vue-zero)
     ├── index.html
-    ├── pages/
-    │   └── pages.json
-    ├── components/
-    │   └── components.json
+    ├── pages/                # pages.json으로 라우트 자동 등록
+    ├── components/           # components.json으로 전역 등록
     ├── layouts/
     └── composables/
 ```
@@ -49,192 +37,54 @@
 ```bash
 wrangler dev     # 로컬 개발 (http://localhost:8787)
 wrangler deploy  # 프로덕션 배포
+npm run scan     # pages.json, components.json, _registry.js 갱신
 ```
 
 ---
 
-## vue-zero 필수 규칙
+## vue-zero 규칙
 
-### 규칙 1 — 파일을 만들면 JSON에 등록 ⚠️ 가장 흔한 실수
+### 규칙 1 — 파일 등록은 scan이 자동 처리
 
-**`.vue` 파일 생성과 JSON 등록은 항상 함께 해야 한다. 등록하지 않으면 동작하지 않는다.**
+`.vue` 또는 `server/api/*.js` 파일을 추가/삭제하면 `npm run scan` 실행.
+Claude Code 사용 시 hook이 자동 실행하므로 수동 실행 불필요.
 
-- `pages/`에 `.vue`를 만들면 → `pages/pages.json`에 이름 추가 (확장자 없이)
-- `components/`에 `.vue`를 만들면 → `components/components.json`에 이름 추가
-- `.vue`를 삭제하면 → JSON에서도 반드시 제거
+### 규칙 2 — Options API만, scoped 금지
 
-```json
-// pages/pages.json
-["index", "about", "users/index", "users/[id]"]
+`<script setup>`, TypeScript, Composition API 사용 금지. `<style scoped>` 금지 — 클래스명으로 구분.
 
-// components/components.json
-["AppButton", "UserCard"]
-```
+### 규칙 3 — 레이아웃
 
-### 규칙 2 — 레이아웃
+`layouts/default.vue` → 모든 페이지에 자동 적용. `layout: 'admin'` 또는 `layout: false`로 페이지별 변경.
 
-`layouts/default.vue`가 있으면 모든 페이지에 자동 적용된다.
+### 규칙 4 — 404, title, composables
 
-```vue
-<!-- layouts/default.vue -->
-<template>
-  <div>
-    <nav>네비게이션</nav>
-    <slot />
-  </div>
-</template>
-```
-
-페이지별로 레이아웃을 바꾸려면 `layout` 옵션을 지정한다:
-
-```vue
-<script>
-export default {
-  layout: 'admin',  // layouts/admin.vue 사용
-  layout: false,    // 레이아웃 없음 (로그인 페이지 등)
-}
-</script>
-```
-
-### 규칙 3 — 404 페이지
-
-`pages/404.vue` 파일이 있으면 자동으로 catch-all로 등록된다. **pages.json에 추가하지 않는다.**
-
-### 규칙 4 — 페이지 title
-
-```vue
-<script>
-export default {
-  title: '사용자 목록',  // document.title 자동 설정
-  data() {
-    return { heading: '사용자 목록' }  // 템플릿 출력은 별도 변수 사용
-  }
-}
-</script>
-```
-
-### 규칙 5 — `<style scoped>` 사용 금지
-
-`<style>`만 사용. 클래스명으로 충돌을 방지한다.
-
-```vue
-<style>
-.page-users h1 { color: blue; }   /* 페이지는 .page-[이름] */
-.card-user h2 { font-size: 1rem; } /* 컴포넌트는 .컴포넌트명 */
-</style>
-```
-
-### 규칙 6 — composables는 직접 import
-
-```js
-import { useUsers } from '/composables/useUsers.js'
-```
-
-### 규칙 7 — Options API만 사용
-
-`<script setup>`, TypeScript, Composition API 사용 금지.
-표준 Vue 3 Options API만 사용한다.
-
-```vue
-<script>
-export default {
-  data() { return {} },
-  computed: {},
-  methods: {},
-  mounted() {},
-}
-</script>
-```
+- `pages/404.vue` → 자동 catch-all. pages.json에 등록하지 않음
+- `title: '페이지명'` → document.title 자동 설정
+- `composables/` → 자동 등록 없음, 직접 import
 
 ---
 
-## 현재 페이지 목록
+## API 추가 패턴
 
-> pages/pages.json과 항상 동기화해서 유지한다.
+2단계로 추가. scan이 `server/_registry.js`를 자동 생성하므로 `server/index.js` 수정 불필요.
 
-```json
-[
-  "index"
-]
-```
-
-| 페이지 | 경로 | 설명 | 인증 필요 | 레이아웃 |
-|--------|------|------|-----------|----------|
-| index  | /    | 홈   | 아니오    | default  |
-
-## 현재 컴포넌트 목록
-
-> components/components.json과 항상 동기화해서 유지한다.
-
-```json
-[]
-```
-
-| 컴포넌트 | 설명 |
-|----------|------|
-| -        | -    |
-
-## 현재 레이아웃 목록
-
-| 레이아웃 | 파일 | 설명 |
-|----------|------|------|
-| default  | layouts/default.vue | 기본 레이아웃 |
-
----
-
-## API 엔드포인트
-
-> 백엔드 API 목록. 새 엔드포인트 추가 시 여기에 함께 기록한다.
-
-| 메서드 | 경로 | 설명 | 인증 |
-|--------|------|------|------|
-| GET    | /api/health | 헬스체크 | 불필요 |
-
-### 인증이 필요한 엔드포인트 패턴
+**1. `server/dao/[리소스].js` — DAO 클래스**
 
 ```js
-import { authMiddleware } from '../middleware/auth.js'
-
-// authMiddleware를 핸들러 앞에 추가하면 끝
-router.get('/me', authMiddleware, (c) => {
-  const user = c.get('user')  // { sub, email, role }
-  return c.json({ user })
-})
-```
-
-프론트엔드에서 API 호출 시 헤더 포함:
-
-```js
-// composables/useApi.js 패턴
-const res = await fetch('/api/users', {
-  headers: { Authorization: `Bearer ${localStorage.token}` }
-})
-```
-
-### 새 API 추가 패턴
-
-엔드포인트를 추가할 때는 아래 2단계를 순서대로 진행한다. (`npm run scan` 또는 Claude Code hook이 자동 등록)
-
-**1. `server/dao/[리소스].js` 생성 — 데이터 접근 클래스**
-
-```js
-// server/dao/posts.js
 export default class PostsDao {
   constructor(env) { this.env = env }
-
   findAll() { return [] }
   findById(id) { return null }
-  create(data) { return { id: 1, ...data } }
 }
 ```
 
-**2. `server/api/[리소스].js` 생성 — 엔드포인트 정의**
+**2. `server/api/[리소스].js` — 엔드포인트**
 
 ```js
-// server/api/posts.js
 import { Hono } from 'hono'
 import PostsDao from '../dao/posts.js'
-import { notFound, badRequest } from '../utils/response.js'
+import { notFound } from '../utils/response.js'
 
 const router = new Hono()
 
@@ -242,60 +92,33 @@ router.get('/', (c) => {
   const dao = new PostsDao(c.env)
   return c.json({ posts: dao.findAll() })
 })
+
 router.get('/:id', (c) => {
   const dao = new PostsDao(c.env)
   const post = dao.findById(c.req.param('id'))
   if (!post) return notFound(c)
   return c.json({ post })
 })
-router.post('/', async (c) => {
-  const dao = new PostsDao(c.env)
-  const body = await c.req.json()
-  if (!body.title) return badRequest(c, 'title is required')
-  return c.json({ post: dao.create(body) }, 201)
-})
 
 export default router
 ```
 
-scan이 `server/_registry.js`를 자동 생성하므로 `server/index.js`는 수정 불필요.
-
 ## 인증
 
-> 인증을 사용하지 않으면 이 섹션을 삭제한다.
+> 인증 미사용 시 이 섹션 삭제.
 
 ```js
-// app/index.html
-VueZero.createApp({
-  auth: {
-    enabled: true,
-    loginPage: '/login',
-  }
-})
+VueZero.createApp({ auth: { enabled: true, loginPage: '/login' } })
 ```
 
-- 토큰 저장: `localStorage.token` (JWT)
-- 보호 페이지: 해당 `.vue` 파일에 `requiresAuth: true` 선언
-
----
-
-## 네이밍 컨벤션
-
-| 대상 | 규칙 | 예시 |
-|------|------|------|
-| 페이지 파일 | kebab-case | `user-detail.vue` |
-| 컴포넌트 파일 | PascalCase | `UserCard.vue` |
-| 컴포넌트 등록명 | PascalCase | `"UserCard"` |
-| CSS 클래스 (페이지) | `.page-[파일명]` | `.page-user-detail` |
-| CSS 클래스 (컴포넌트) | `.컴포넌트명` | `.user-card` |
-| composable 파일 | camelCase | `useUsers.js` |
+- 보호 페이지: `.vue`에 `requiresAuth: true`
+- API 보호: `router.get('/me', authMiddleware, handler)`
+- 토큰: `localStorage.token` (JWT), 요청 시 `Authorization: Bearer <token>`
 
 ## 외부 라이브러리
 
-> 사용 중인 CDN 라이브러리 목록. app/index.html의 순서와 일치해야 한다.
-
-| 라이브러리 | 용도 | CDN |
-|-----------|------|-----|
-| Vue 3 | 프레임워크 | unpkg.com/vue@3/dist/vue.global.js |
-| Vue Router 4 | 라우터 | unpkg.com/vue-router@4/dist/vue-router.global.js |
-| vue-zero | 라우터 자동화 | unpkg.com/vue-ai-first/dist/vue-zero.js |
+| 라이브러리 | CDN |
+|-----------|-----|
+| Vue 3 | unpkg.com/vue@3/dist/vue.global.prod.js |
+| Vue Router 4 | unpkg.com/vue-router@4/dist/vue-router.global.prod.js |
+| vue-zero | unpkg.com/vue-ai-first/dist/vue-zero.js |
