@@ -429,107 +429,6 @@ export default {
 
 파일을 추가하거나 삭제할 때 이 JSON 파일을 함께 업데이트한다.
 
-## SEO / OG 메타
-
-vue-zero는 CSR이라 검색엔진·SNS 크롤러가 JS 실행 후 콘텐츠를 보지 못한다. 규모에 따라 3가지 방법을 사용한다. 대시보드, 관리자 등 SEO 불필요한 페이지는 이 작업이 필요 없다.
-
-### 방법 1 — index.html 직접 작성 (단일 페이지)
-
-메인 랜딩 페이지 하나만 SEO가 필요할 때. `index.html`에 메타와 크롤러용 콘텐츠를 직접 넣는다.
-
-```html
-<head>
-  <title>우리 서비스</title>
-  <meta name="description" content="서비스 소개">
-  <meta property="og:title" content="우리 서비스">
-  <meta property="og:description" content="서비스 소개">
-  <meta property="og:image" content="https://example.com/og.png">
-</head>
-<body>
-  <!-- 크롤러용 콘텐츠 — display:none이어도 크롤러는 읽는다 -->
-  <style>#seo-content { display: none; }</style>
-  <div id="seo-content">
-    <h1>우리 서비스</h1>
-    <p>서비스 소개 텍스트</p>
-  </div>
-
-  <!-- vue-zero SPA -->
-  <div id="app"></div>
-  <script>VueZero.createApp()</script>
-</body>
-```
-
-### 방법 2 — getPageMeta 미들웨어 (소규모, ~10개 페이지)
-
-여러 URL에 SEO/OG가 필요하지만 페이지 수가 적을 때. Workers에서 봇 요청만 가로채서 메타가 포함된 HTML을 반환한다.
-
-```js
-// server/index.js에 register(app) 앞에 추가
-app.use('*', async (c, next) => {
-  const ua = c.req.header('User-Agent') || ''
-  const isBot = /googlebot|bingbot|kakaotalk|facebookexternalhit|twitterbot/i.test(ua)
-  if (!isBot) return next()
-
-  const meta = await getPageMeta(c.req.path, c.env)
-  return c.html(`<!DOCTYPE html>
-<html>
-<head>
-  <title>${meta.title}</title>
-  <meta name="description" content="${meta.description}">
-  <meta property="og:title" content="${meta.title}">
-  <meta property="og:description" content="${meta.description}">
-  <meta property="og:image" content="${meta.image}">
-</head>
-<body>${meta.body}</body>
-</html>`)
-})
-```
-
-```js
-// server/utils/seo.js
-import CoursesDao from '../dao/courses.js'
-
-const defaults = {
-  title: '우리 서비스',
-  description: '서비스 소개',
-  image: 'https://example.com/og-default.png',
-  body: ''
-}
-
-export async function getPageMeta(path, env) {
-  const match = path.match(/^\/course\/(\d+)$/)
-  if (match) {
-    const dao = new CoursesDao(env)
-    const course = dao.findById(match[1])
-    if (course) return {
-      title: course.title,
-      description: course.description,
-      image: course.image,
-      body: `<h1>${course.title}</h1><p>${course.description}</p>`
-    }
-  }
-
-  return { ...defaults }
-}
-```
-
-일반 사용자는 `return next()`로 SPA 그대로. 봇만 DB에서 데이터를 꺼내 HTML 문자열을 반환하므로 응답이 빠르다(~1ms).
-
-### 방법 3 — Lambda 프리렌더러 + KV 캐시 (중대규모, 수십~수백 페이지)
-
-SEO 페이지가 많아서 `getPageMeta`를 일일이 관리하기 어려울 때. AWS Lambda에서 헤드리스 브라우저로 실제 렌더링하고, KV에 캐시한다.
-
-```
-봇 요청 → Worker → KV 캐시 확인 → 히트: 즉시 반환 (~5ms)
-                                  → 미스: Lambda 호출 → 렌더링 → KV 저장 → 반환
-일반 요청 → SPA 그대로
-```
-
-- Lambda는 Puppeteer/Playwright로 SPA를 실제 렌더링하여 완성된 HTML을 반환
-- KV에 캐시하므로 같은 페이지는 Lambda를 다시 호출하지 않음
-- 100개 페이지, 24시간 캐시 = 하루 ~100번 Lambda 호출 → 무료 티어로 충분
-- 페이지를 추가해도 프리렌더러 코드 수정 불필요 — 유지보수가 자동
-
 ## createApp 옵션
 
 기본값(`pages`, `components`, `layouts`)을 쓴다면 `createApp()`을 인수 없이 호출한다.
@@ -566,6 +465,16 @@ export default {
 }
 </script>
 ```
+
+## SEO / OG 메타
+
+vue-zero는 CSR이라 검색엔진·SNS 크롤러가 JS를 실행하지 않으면 콘텐츠를 보지 못한다. 대시보드, 관리자 등 SEO 불필요한 페이지는 이 작업이 필요 없다. 규모에 따라 3가지 방법을 사용한다.
+
+**방법 1 — index.html 직접 작성 (단일 페이지):** `<head>`에 메타 태그 + `<div id="seo-content" style="display:none">`에 크롤러용 콘텐츠. 크롤러는 `display:none`이어도 읽는다.
+
+**방법 2 — getPageMeta 미들웨어 (소규모, ~10개 페이지):** Workers에서 봇 User-Agent를 감지하여 DB에서 데이터를 꺼내 메타가 포함된 HTML을 반환. 일반 사용자는 SPA 그대로. `server/utils/seo.js`에 URL별 메타 매핑 함수를 작성.
+
+**방법 3 — Lambda 프리렌더러 + KV 캐시 (중대규모):** AWS Lambda에서 Puppeteer로 실제 렌더링 → KV에 캐시 → 봇 요청 시 캐시에서 서빙. 페이지 추가해도 프리렌더러 수정 불필요. 100개 페이지, 24시간 캐시 = 하루 ~100번 Lambda 호출 → 무료 티어로 충분.
 
 ## 외부 라이브러리 연동 (CDN)
 
