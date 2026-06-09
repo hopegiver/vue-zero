@@ -3,20 +3,31 @@
 Zero-build Vue 3 router for AI-driven development.
 
 - AI only needs standard Vue 3 knowledge — no special syntax to learn
-- No build step — runs directly in the browser
+- No build step — runs directly in the browser via CDN
 - Nuxt-style file-based routing — conventions AI already knows
+- Bootstrap 5 + Notion-inspired design system out of the box
+- Cloudflare Workers full-stack ready
 
 ## Quick Start
 
 ```html
-<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
-<script src="https://unpkg.com/vue-router@4/dist/vue-router.global.prod.js"></script>
-<script src="https://unpkg.com/vue-ai-first/dist/vue-zero.js"></script>
-
-<div id="app"></div>
-<script>
-  VueZero.createApp()
-</script>
+<!DOCTYPE html>
+<html>
+<head>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/css/base.css" rel="stylesheet">
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+  <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.prod.js"></script>
+  <script src="https://unpkg.com/vue-ai-first/dist/vue-zero.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    VueZero.createApp()
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
 ```
 
 Create `.vue` files in `pages/` and they become routes automatically:
@@ -48,15 +59,24 @@ pages/
 
 **Page titles** — Set `title: 'My Page'` and `document.title` updates on navigation.
 
+**Design system** — Bootstrap 5 base with Notion-inspired `base.css` tokens (colors, typography, spacing, shadows). All rem-based for consistent scaling.
+
+**CSP friendly** — Script evaluation uses Blob URL + dynamic import instead of `eval`/`new Function`. No `unsafe-eval` required.
+
 ## Page Example
 
 ```vue
 <template>
-  <div>
-    <h1>{{ heading }}</h1>
-    <ul>
-      <li v-for="user in users" :key="user.id">{{ user.name }}</li>
-    </ul>
+  <div class="container py-4">
+    <h1 class="mb-3">{{ heading }}</h1>
+    <div class="card p-4">
+      <ul class="list-unstyled mb-0">
+        <li v-for="user in users" :key="user.id" class="py-2 border-bottom">
+          <router-link :to="'/users/' + user.id">{{ user.name }}</router-link>
+          <span class="text-muted small ms-2">{{ user.email }}</span>
+        </li>
+      </ul>
+    </div>
   </div>
 </template>
 
@@ -82,21 +102,25 @@ vue-zero pairs with [Hono](https://hono.dev) on Cloudflare Workers for a complet
 ```
 my-app/
   wrangler.toml
-  api/              # Hono backend
+  server/             # Hono backend
     index.js
-    routes/
+    api/
     dao/
-  app/              # vue-zero frontend
+    middleware/
+    utils/
+  app/                # vue-zero frontend
     index.html
     pages/
     components/
     layouts/
+    assets/css/
 ```
 
 ```toml
 # wrangler.toml
 name = "my-app"
-main = "api/index.js"
+main = "server/index.js"
+compatibility_date = "2024-01-01"
 
 [assets]
 directory = "./app"
@@ -108,9 +132,9 @@ run_worker_first = ["/api/*"]
 
 ```js
 VueZero.createApp({
-  pagesDir: 'pages',         // default
+  pagesDir: 'pages',           // default
   componentsDir: 'components', // default
-  layoutsDir: 'layouts',      // default
+  layoutsDir: 'layouts',       // default
   auth: {
     enabled: true,
     loginPage: '/login',
@@ -120,9 +144,9 @@ VueZero.createApp({
 
 ## Rules for AI
 
-1. **Register files** — Add pages to `pages/pages.json`, components to `components/components.json` (without `.vue` extension)
+1. **Register files** — Add pages to `pages/pages.json`, components to `components/components.json` (without `.vue` extension). Or run `npm run scan`.
 2. **Options API only** — No `<script setup>`, no Composition API, no TypeScript
-3. **No `<style scoped>`** — Use class names for style isolation
+3. **No `<style scoped>`** — Use Bootstrap classes + `base.css` tokens. Use class names for isolation when needed.
 4. **404 page** — `pages/404.vue` is auto-detected. Do NOT add it to `pages.json`
 
 ## License
