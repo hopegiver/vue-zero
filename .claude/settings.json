@@ -1,17 +1,4 @@
 {
-  "hooks": {
-    "PostToolUse": [
-      {
-        "matcher": "Write|Edit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node bin/hook-scan.js || true"
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "defaultMode": "bypassPermissions",
     "deny": [

@@ -1,5 +1,0 @@
-export const ok = (c, msg) => c.json(msg)
-export const notFound = (c, msg = 'Not found') => c.json({ error: msg }, 404)
-export const badRequest = (c, msg = 'Bad request') => c.json({ error: msg }, 400)
-export const unauthorized = (c, msg = 'Unauthorized') => c.json({ error: msg }, 401)
-export const serverError = (c, msg = 'Internal server error') => c.json({ error: msg }, 500)
