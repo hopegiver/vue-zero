@@ -26,6 +26,12 @@ export default {
 }
 ```
 
+## 디자인
+
+- Bootstrap 5 CDN 사용 — AI가 이미 잘 아는 클래스, 제로빌드 유지
+- 커스텀 스타일은 `assets/css/base.css`에 작성
+- Bootstrap 클래스 우선, 커스텀 CSS는 Bootstrap으로 안 되는 것만
+
 ## API 추가
 
 1. `server/dao/X.js` — `export default class XDao { constructor(env) {...} findAll() {...} }`

@@ -60,6 +60,9 @@ my-app/
     │   └── UserCard.vue
     ├── layouts/             # 레이아웃 래퍼
     │   └── default.vue      # 기본 레이아웃
+    ├── assets/
+    │   └── css/
+    │       └── base.css   # Bootstrap 커스텀 오버라이드
     └── composables/         # 공통 로직 (표준 JS 모듈)
         └── useUsers.js
 ```
@@ -369,6 +372,8 @@ import { useUsers } from '/composables/useUsers.js'
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="/assets/css/base.css" rel="stylesheet">
   <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
   <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.js"></script>
   <script src="https://unpkg.com/vue-ai-first/dist/vue-zero.js"></script>
@@ -379,6 +384,7 @@ import { useUsers } from '/composables/useUsers.js'
     VueZero.createApp()
     // 기본값: pages/, components/, layouts/ (index.html 기준 상대경로)
   </script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
 ```

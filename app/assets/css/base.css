@@ -1,0 +1,219 @@
+/* base.css — Notion-inspired design tokens + Bootstrap overrides */
+
+/* ── Import Inter (NotionInter substitute) ── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* ── Design Tokens ── */
+:root {
+  /* Colors — Brand */
+  --color-primary: #0075de;
+  --color-primary-active: #005bab;
+  --color-secondary: #213183;
+  --color-on-primary: #ffffff;
+
+  /* Colors — Surface */
+  --color-canvas: #ffffff;
+  --color-canvas-soft: #f6f5f4;
+  --color-surface: #ffffff;
+  --color-hairline: #e6e6e6;
+
+  /* Colors — Text */
+  --color-ink: #000000;
+  --color-ink-secondary: #31302e;
+  --color-ink-muted: #615d59;
+  --color-ink-faint: #a39e98;
+
+  /* Colors — Accent (decorative only) */
+  --color-accent-sky: #62aef0;
+  --color-accent-purple: #d6b6f6;
+  --color-accent-pink: #ff64c8;
+  --color-accent-orange: #dd5b00;
+  --color-accent-teal: #2a9d99;
+  --color-accent-green: #1aae39;
+
+  /* Spacing */
+  --space-xxs: 4px;
+  --space-xs: 8px;
+  --space-sm: 12px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 28px;
+  --space-xxl: 32px;
+
+  /* Rounded */
+  --rounded-xs: 4px;
+  --rounded-sm: 5px;
+  --rounded-md: 8px;
+  --rounded-lg: 12px;
+  --rounded-xl: 16px;
+  --rounded-full: 9999px;
+
+  /* Elevation — soft layered shadows */
+  --shadow-soft: 0 0.175px 1.041px rgba(0,0,0,0.01),
+                 0 0.8px 2.925px rgba(0,0,0,0.02),
+                 0 2.025px 7.847px rgba(0,0,0,0.027),
+                 0 4px 18px rgba(0,0,0,0.04);
+  --shadow-elevated: 0 0.175px 1.041px rgba(0,0,0,0.01),
+                     0 0.8px 2.925px rgba(0,0,0,0.02),
+                     0 2.025px 7.847px rgba(0,0,0,0.027),
+                     0 4px 18px rgba(0,0,0,0.04),
+                     0 23px 52px rgba(0,0,0,0.05);
+}
+
+/* ── Bootstrap Overrides ── */
+
+/* Typography */
+body {
+  font-family: 'Inter', -apple-system, system-ui, "Segoe UI", Helvetica, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-ink);
+  background-color: var(--color-canvas-soft);
+}
+
+/* Links */
+a {
+  color: var(--color-primary);
+}
+a:hover {
+  color: var(--color-primary-active);
+}
+
+/* Headings */
+h1 { font-size: 40px; font-weight: 700; line-height: 1.1; letter-spacing: -1px; }
+h2 { font-size: 26px; font-weight: 700; line-height: 1.23; letter-spacing: -0.625px; }
+h3 { font-size: 22px; font-weight: 700; line-height: 1.27; letter-spacing: -0.25px; }
+h4 { font-size: 20px; font-weight: 600; line-height: 1.4; letter-spacing: -0.125px; }
+h5 { font-size: 16px; font-weight: 600; line-height: 1.5; }
+h6 { font-size: 14px; font-weight: 600; line-height: 1.43; }
+
+/* Buttons — Primary (pill) */
+.btn-primary {
+  background-color: var(--color-primary);
+  border-color: var(--color-primary);
+  border-radius: var(--rounded-full);
+  font-weight: 500;
+}
+.btn-primary:hover,
+.btn-primary:focus {
+  background-color: var(--color-primary-active);
+  border-color: var(--color-primary-active);
+}
+.btn-primary:active {
+  background-color: var(--color-primary-active);
+  border-color: var(--color-primary-active);
+  transform: scale(0.97);
+}
+
+/* Buttons — Secondary (pill, white) */
+.btn-outline-secondary {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-hairline);
+  border-radius: var(--rounded-full);
+  font-weight: 500;
+  box-shadow: var(--shadow-soft);
+}
+
+/* Buttons — Utility (tight radius) */
+.btn-outline-primary {
+  color: var(--color-ink);
+  border-color: var(--color-hairline);
+  border-radius: var(--rounded-md);
+  font-weight: 500;
+  padding: 4px 14px;
+}
+
+/* Cards */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-hairline);
+  border-radius: var(--rounded-lg);
+  box-shadow: none;
+}
+.card-elevated {
+  box-shadow: var(--shadow-soft);
+}
+
+/* Navbar */
+.navbar {
+  background-color: var(--color-canvas) !important;
+  padding: var(--space-md);
+}
+
+/* Forms */
+.form-control,
+.form-select {
+  border: 1px solid #ddd;
+  border-radius: var(--rounded-xs);
+  padding: 6px 12px;
+  font-size: 15px;
+  color: var(--color-ink);
+}
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Badges (pill) */
+.badge {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.125px;
+  border-radius: var(--rounded-full);
+  padding: 4px 8px;
+}
+.badge.bg-primary {
+  background-color: var(--color-surface) !important;
+  color: var(--color-primary);
+}
+
+/* Table */
+.table thead th {
+  background-color: var(--color-canvas-soft);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.125px;
+  text-transform: uppercase;
+  color: var(--color-ink-muted);
+}
+.table td {
+  font-size: 15px;
+  color: var(--color-ink);
+  border-color: var(--color-hairline);
+}
+
+/* Modal */
+.modal-content {
+  border-radius: var(--rounded-xl);
+  border: none;
+  box-shadow: var(--shadow-elevated);
+}
+
+/* Toast */
+.toast {
+  border-radius: var(--rounded-xl);
+  box-shadow: var(--shadow-soft);
+}
+
+/* Footer */
+.footer {
+  background-color: var(--color-canvas-soft);
+  color: var(--color-ink-secondary);
+  font-size: 14px;
+  padding: var(--space-xxl);
+}
+
+/* ── Utility Classes ── */
+.text-muted { color: var(--color-ink-muted) !important; }
+.text-faint { color: var(--color-ink-faint); }
+.bg-canvas { background-color: var(--color-canvas); }
+.bg-canvas-soft { background-color: var(--color-canvas-soft); }
+.border-hairline { border-color: var(--color-hairline) !important; }
+.shadow-soft { box-shadow: var(--shadow-soft); }
+.shadow-elevated { box-shadow: var(--shadow-elevated); }
+.rounded-pill-md { border-radius: var(--rounded-md); }
+.rounded-pill-lg { border-radius: var(--rounded-lg); }
+.rounded-pill-xl { border-radius: var(--rounded-xl); }
