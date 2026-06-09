@@ -20,16 +20,18 @@ function extractBlock(source: string, tag: string): string {
   return m ? m[1].trim() : ''
 }
 
-function evalScript(scriptStr: string): Record<string, unknown> {
+async function evalScript(scriptStr: string): Promise<Record<string, unknown>> {
   if (!scriptStr.trim()) return {}
-  const normalized = scriptStr.replace(/export\s+default\s*/, 'return ')
+  const blob = new Blob([scriptStr], { type: 'text/javascript' })
+  const url = URL.createObjectURL(blob)
   try {
-    // eslint-disable-next-line no-new-func
-    const fn = new Function(normalized)
-    return fn() ?? {}
+    const module = await import(/* @vite-ignore */ url)
+    return module.default ?? {}
   } catch (e) {
     console.error('[vue-zero] SfcParser: script eval failed', e)
     return {}
+  } finally {
+    URL.revokeObjectURL(url)
   }
 }
 
@@ -42,7 +44,7 @@ export async function parseSfc(url: string, scopeId: string, scope: StyleScope =
   const scriptStr = extractBlock(source, 'script')
   const style = extractBlock(source, 'style')
 
-  const componentOptions = evalScript(scriptStr)
+  const componentOptions = await evalScript(scriptStr)
 
   if (style) {
     styleInjector.inject(style, scopeId, scope)

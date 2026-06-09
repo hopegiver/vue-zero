@@ -1,6 +1,6 @@
 {
   "name": "vue-ai-first",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Zero-build Vue 3 router for AI-driven development",
   "main": "dist/vue-zero.js",
   "files": [
