@@ -1,13 +1,17 @@
 <template>
-  <div class="page-search">
-    <h1>검색</h1>
-    <input v-model="keyword" placeholder="검색어 입력..." @input="onSearch" />
-    <p class="query-info">쿼리: q={{ $route.query.q || '(없음)' }}</p>
-    <ul v-if="results.length">
-      <li v-for="item in results" :key="item">{{ item }}</li>
-    </ul>
-    <p v-else-if="keyword">검색 결과가 없습니다.</p>
-    <router-link to="/">← Home</router-link>
+  <div class="container py-4">
+    <h1 class="mb-3">검색</h1>
+    <div class="card p-4 mb-3">
+      <input v-model="keyword" class="form-control mb-2" placeholder="검색어 입력..." @input="onSearch" />
+      <p class="text-faint small mb-0">쿼리: q={{ $route.query.q || '(없음)' }}</p>
+    </div>
+    <div v-if="results.length" class="card p-4 mb-3">
+      <ul class="list-unstyled mb-0">
+        <li v-for="item in results" :key="item" class="py-1 border-bottom">{{ item }}</li>
+      </ul>
+    </div>
+    <p v-else-if="keyword" class="text-muted small">검색 결과가 없습니다.</p>
+    <router-link to="/" class="small">← Home</router-link>
   </div>
 </template>
 
@@ -40,16 +44,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.page-search { padding: 2rem; }
-.page-search h1 { color: #35495e; }
-.page-search input {
-  padding: 0.5rem; width: 100%; max-width: 400px;
-  border: 1px solid #ddd; border-radius: 4px; margin-bottom: 1rem; box-sizing: border-box;
-}
-.page-search .query-info { color: #888; font-size: 0.85rem; }
-.page-search ul { padding: 0; }
-.page-search li { list-style: none; margin: 0.3rem 0; }
-.page-search a { color: #42b883; }
-</style>

@@ -1,35 +1,46 @@
 <template>
-  <div class="page-dashboard">
-    <h1>대시보드</h1>
-    <p v-if="loading">불러오는 중...</p>
-    <div v-else class="stats-grid">
-      <div class="stat-card" v-for="stat in stats" :key="stat.label">
-        <div class="stat-value">{{ stat.value }}</div>
-        <div class="stat-label">{{ stat.label }}</div>
-        <div class="stat-change" :class="stat.trend">{{ stat.change }}</div>
-      </div>
-    </div>
-    <div class="dashboard-sections">
-      <div class="section">
-        <h2>최근 활동</h2>
-        <div class="user-cards">
-          <UserCard v-for="user in activeUsers" :key="user.name"
-            :name="user.name" :role="user.role" :color="user.color"
-            @select="selectedUser = user.name" />
+  <div class="container py-4">
+    <h1 class="mb-3">대시보드</h1>
+    <p v-if="loading" class="text-muted">불러오는 중...</p>
+    <template v-else>
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3" v-for="stat in stats" :key="stat.label">
+          <div class="card p-3 text-center">
+            <div class="fs-4 fw-bold">{{ stat.value }}</div>
+            <div class="text-faint small">{{ stat.label }}</div>
+            <div class="small fw-bold" :class="stat.trend === 'up' ? 'text-success' : 'text-danger'">{{ stat.change }}</div>
+          </div>
         </div>
-        <p v-if="selectedUser" class="selected-info">선택: {{ selectedUser }}</p>
       </div>
-      <div class="section">
-        <h2>알림 {{ unreadCount > 0 ? '(' + unreadCount + ')' : '' }}</h2>
-        <ul>
-          <li v-for="notification in notifications" :key="notification.id"
-              :class="{ unread: !notification.read }" @click="markRead(notification)">
-            {{ notification.text }}
-          </li>
-        </ul>
-        <AppButton v-if="unreadCount > 0" @click="markAllRead">모두 읽음</AppButton>
+      <div class="row g-3">
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h2 class="h6 mb-3">최근 활동</h2>
+            <div class="d-flex flex-column gap-2">
+              <UserCard v-for="user in activeUsers" :key="user.name"
+                :name="user.name" :role="user.role" :color="user.color"
+                @select="selectedUser = user.name" />
+            </div>
+            <p v-if="selectedUser" class="mt-2 mb-0 small fw-bold text-primary">선택: {{ selectedUser }}</p>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="card p-3">
+            <h2 class="h6 mb-3">알림 {{ unreadCount > 0 ? '(' + unreadCount + ')' : '' }}</h2>
+            <ul class="list-unstyled mb-2">
+              <li v-for="notification in notifications" :key="notification.id"
+                  class="py-2 border-bottom small"
+                  :class="{ 'fw-bold': !notification.read }"
+                  role="button"
+                  @click="markRead(notification)">
+                {{ notification.text }}
+              </li>
+            </ul>
+            <AppButton v-if="unreadCount > 0" @click="markAllRead">모두 읽음</AppButton>
+          </div>
+        </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
@@ -75,26 +86,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.page-dashboard { padding: 2rem; }
-.page-dashboard h1 { color: #35495e; }
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 2rem; }
-.stat-card {
-  background: #fff; padding: 1rem; border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.08); text-align: center;
-}
-.stat-value { font-size: 1.5rem; font-weight: bold; color: #35495e; }
-.stat-label { color: #888; font-size: 0.85rem; margin: 0.25rem 0; }
-.stat-change { font-size: 0.8rem; font-weight: bold; }
-.stat-change.up { color: #42b883; }
-.stat-change.down { color: #e74c3c; }
-.dashboard-sections { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-.section { background: #fff; padding: 1rem; border-radius: 8px; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
-.section h2 { color: #35495e; font-size: 1rem; margin: 0 0 0.75rem; }
-.section ul { padding: 0; margin: 0; }
-.section li { list-style: none; padding: 0.4rem 0; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; }
-.section li.unread { font-weight: bold; cursor: pointer; }
-.user-cards { display: flex; flex-direction: column; gap: 0.5rem; }
-.selected-info { color: #42b883; font-weight: bold; margin-top: 0.5rem; font-size: 0.85rem; }
-</style>

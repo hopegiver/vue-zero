@@ -1,9 +1,10 @@
 <template>
-  <div class="user-card" @click="$emit('select')">
-    <div class="user-avatar" :style="{ background: color }">{{ initials }}</div>
-    <div class="user-info">
-      <strong>{{ name }}</strong>
-      <span>{{ role }}</span>
+  <div class="d-flex align-items-center gap-3 p-3 bg-canvas rounded-2 border border-hairline user-card-hover" role="button" @click="$emit('select')">
+    <div class="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold flex-shrink-0 user-card-avatar"
+         :style="{ background: color }">{{ initials }}</div>
+    <div>
+      <strong class="d-block small">{{ name }}</strong>
+      <span class="text-faint text-eyebrow">{{ role }}</span>
     </div>
   </div>
 </template>
@@ -13,7 +14,7 @@ export default {
   props: {
     name: { type: String, required: true },
     role: { type: String, default: '' },
-    color: { type: String, default: '#42b883' },
+    color: { type: String, default: '#0075de' },
   },
   emits: ['select'],
   computed: {
@@ -25,17 +26,7 @@ export default {
 </script>
 
 <style>
-.user-card {
-  display: flex; align-items: center; gap: 0.75rem;
-  padding: 0.75rem; border-radius: 8px; cursor: pointer;
-  border: 1px solid #eee; transition: box-shadow 0.2s;
-}
-.user-card:hover { box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-.user-avatar {
-  width: 40px; height: 40px; border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: bold; font-size: 1.1rem; flex-shrink: 0;
-}
-.user-info strong { display: block; color: #35495e; }
-.user-info span { color: #888; font-size: 0.85rem; }
+.user-card-hover { cursor: pointer; transition: box-shadow 0.15s; }
+.user-card-hover:hover { box-shadow: var(--shadow-soft); }
+.user-card-avatar { width: 36px; height: 36px; font-size: 0.875rem; }
 </style>

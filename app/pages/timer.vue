@@ -1,29 +1,33 @@
 <template>
-  <div class="page-timer">
-    <h1>타이머</h1>
-    <div class="timer-display">{{ formattedTime }}</div>
-    <div class="timer-buttons">
-      <AppButton @click="start" v-if="!running">시작</AppButton>
-      <AppButton @click="pause" v-else>일시정지</AppButton>
-      <AppButton @click="reset">초기화</AppButton>
-      <AppButton @click="addLap" v-if="running">랩</AppButton>
+  <div class="container py-4 text-center">
+    <h1 class="mb-3">타이머</h1>
+    <div class="card p-4 mb-3">
+      <p class="display-3 fw-bold font-monospace mb-3 text-primary">{{ formattedTime }}</p>
+      <div class="d-flex gap-2 justify-content-center mb-3">
+        <AppButton @click="start" v-if="!running">시작</AppButton>
+        <AppButton @click="pause" v-else>일시정지</AppButton>
+        <button class="btn btn-outline-secondary btn-sm" @click="reset">초기화</button>
+        <AppButton @click="addLap" v-if="running">랩</AppButton>
+      </div>
+      <div class="d-flex gap-2 justify-content-center">
+        <button class="btn btn-outline-secondary btn-sm" @click="setPreset(60)">1분</button>
+        <button class="btn btn-outline-secondary btn-sm" @click="setPreset(180)">3분</button>
+        <button class="btn btn-outline-secondary btn-sm" @click="setPreset(300)">5분</button>
+        <button class="btn btn-outline-secondary btn-sm" @click="setPreset(600)">10분</button>
+      </div>
     </div>
-    <div class="presets">
-      <span @click="setPreset(60)">1분</span>
-      <span @click="setPreset(180)">3분</span>
-      <span @click="setPreset(300)">5분</span>
-      <span @click="setPreset(600)">10분</span>
-    </div>
-    <div v-if="laps.length > 0" class="laps">
-      <h2>랩 기록</h2>
-      <ul>
-        <li v-for="(lap, index) in laps" :key="index">
-          <span class="lap-num">#{{ laps.length - index }}</span>
+    <div v-if="laps.length > 0" class="card overflow-hidden mb-3">
+      <div class="px-3 py-2 bg-canvas-soft border-bottom">
+        <strong class="small">랩 기록</strong>
+      </div>
+      <ul class="list-unstyled mb-0">
+        <li v-for="(lap, index) in laps" :key="index" class="d-flex justify-content-between px-3 py-2 border-bottom small">
+          <span class="text-faint">#{{ laps.length - index }}</span>
           <span>{{ formatSeconds(lap) }}</span>
         </li>
       </ul>
     </div>
-    <router-link to="/">← Home</router-link>
+    <router-link to="/" class="small">← Home</router-link>
   </div>
 </template>
 
@@ -89,19 +93,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.page-timer { padding: 2rem; text-align: center; }
-.page-timer h1 { color: #35495e; }
-.timer-display { font-size: 4rem; font-weight: bold; color: #42b883; font-family: monospace; margin: 1rem 0; }
-.timer-buttons { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem; }
-.presets { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1.5rem; }
-.presets span { cursor: pointer; padding: 0.25rem 0.75rem; border: 1px solid #ddd; border-radius: 4px; color: #888; }
-.presets span:hover { border-color: #42b883; color: #42b883; }
-.laps { text-align: left; max-width: 300px; margin: 0 auto 1rem; }
-.laps h2 { font-size: 1rem; color: #35495e; }
-.laps ul { padding: 0; }
-.laps li { list-style: none; display: flex; justify-content: space-between; padding: 0.3rem 0; border-bottom: 1px solid #eee; }
-.lap-num { color: #888; }
-.page-timer a { color: #42b883; }
-</style>

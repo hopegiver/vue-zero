@@ -1,18 +1,16 @@
 <template>
-  <div class="layout-admin">
-    <aside class="admin-sidebar">
-      <div class="admin-logo">관리자</div>
-      <nav>
-        <router-link to="/admin">대시보드</router-link>
-        <router-link to="/admin/members">회원관리</router-link>
-        <router-link to="/">사이트로 돌아가기</router-link>
+  <div class="d-flex min-vh-100">
+    <aside class="sidebar d-flex flex-column p-3 text-white flex-shrink-0 bg-ink">
+      <div class="fs-5 fw-bold mb-4 pb-3 border-bottom border-secondary">관리자</div>
+      <nav class="d-flex flex-column gap-1">
+        <router-link to="/admin" class="text-decoration-none text-white-50 px-2 py-1 rounded-1 admin-nav-link">대시보드</router-link>
+        <router-link to="/admin/members" class="text-decoration-none text-white-50 px-2 py-1 rounded-1 admin-nav-link">회원관리</router-link>
+        <router-link to="/" class="text-decoration-none text-white-50 px-2 py-1 rounded-1 admin-nav-link mt-4 small">← 사이트로 돌아가기</router-link>
       </nav>
     </aside>
-    <div class="admin-body">
-      <header class="admin-header">
-        <span>Admin Panel</span>
-      </header>
-      <main class="admin-main">
+    <div class="d-flex flex-column flex-grow-1">
+      <header class="px-4 py-2 fw-bold border-bottom bg-canvas">Admin Panel</header>
+      <main class="flex-grow-1 p-4 bg-canvas-soft">
         <slot />
       </main>
     </div>
@@ -24,13 +22,6 @@ export default {}
 </script>
 
 <style>
-.layout-admin { display: flex; min-height: 100vh; }
-.admin-sidebar { width: 200px; background: #1a1a2e; color: #fff; padding: 1rem; flex-shrink: 0; }
-.admin-logo { font-size: 1.2rem; font-weight: bold; margin-bottom: 1.5rem; padding-bottom: 0.75rem; border-bottom: 1px solid #333; }
-.admin-sidebar nav { display: flex; flex-direction: column; gap: 0.5rem; }
-.admin-sidebar nav a { color: #aaa; text-decoration: none; padding: 0.4rem 0.5rem; border-radius: 4px; }
-.admin-sidebar nav a:hover, .admin-sidebar nav a.router-link-active { color: #fff; background: #16213e; }
-.admin-body { flex: 1; display: flex; flex-direction: column; }
-.admin-header { padding: 0.75rem 1.5rem; background: #16213e; color: #fff; font-weight: bold; }
-.admin-main { flex: 1; padding: 1.5rem; background: #f0f2f5; }
+.admin-nav-link:hover,
+.admin-nav-link.router-link-active { color: #fff !important; background: rgba(255,255,255,0.1); }
 </style>

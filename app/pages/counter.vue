@@ -1,15 +1,17 @@
 <template>
-  <div class="page-counter">
-    <h1>카운터</h1>
-    <p class="count">{{ count }}</p>
-    <p class="double">x2 = {{ doubled }}</p>
-    <div class="buttons">
-      <AppButton @click="count--">-1</AppButton>
-      <AppButton @click="count++">+1</AppButton>
-      <AppButton @click="count = 0">초기화</AppButton>
+  <div class="container py-4 text-center">
+    <h1 class="mb-3">카운터</h1>
+    <div class="card p-4 mb-3">
+      <p class="display-4 fw-bold mb-1 text-primary">{{ count }}</p>
+      <p class="text-muted small mb-3">x2 = {{ doubled }}</p>
+      <div class="d-flex gap-2 justify-content-center mb-3">
+        <button class="btn btn-outline-secondary btn-sm" @click="count--">-1</button>
+        <button class="btn btn-outline-secondary btn-sm" @click="count++">+1</button>
+        <button class="btn btn-outline-secondary btn-sm" @click="count = 0">초기화</button>
+      </div>
+      <p class="text-faint small mb-0">변경 횟수: {{ changeCount }}</p>
     </div>
-    <p class="history">변경 횟수: {{ changeCount }}</p>
-    <router-link to="/">← Home</router-link>
+    <router-link to="/" class="small">← Home</router-link>
   </div>
 </template>
 
@@ -34,13 +36,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.page-counter { padding: 2rem; text-align: center; }
-.page-counter h1 { color: #35495e; }
-.page-counter .count { font-size: 3rem; font-weight: bold; color: #42b883; margin: 0.5rem 0; }
-.page-counter .double { color: #888; margin-bottom: 1rem; }
-.page-counter .buttons { display: flex; gap: 0.5rem; justify-content: center; margin-bottom: 1rem; }
-.page-counter .history { color: #888; font-size: 0.85rem; }
-.page-counter a { color: #42b883; }
-</style>

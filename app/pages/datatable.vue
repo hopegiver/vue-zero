@@ -1,46 +1,45 @@
 <template>
-  <div class="page-table">
-    <h1>데이터 테이블</h1>
-    <div class="table-controls">
-      <input v-model="searchText" placeholder="검색..." />
-      <select v-model="perPage">
-        <option :value="5">5개씩</option>
-        <option :value="10">10개씩</option>
-        <option :value="20">20개씩</option>
-      </select>
+  <div class="container py-4">
+    <h1 class="mb-3">데이터 테이블</h1>
+    <div class="card p-3 mb-3">
+      <div class="d-flex gap-2">
+        <input v-model="searchText" class="form-control" placeholder="검색..." />
+        <select v-model="perPage" class="form-select w-auto">
+          <option :value="5">5개씩</option>
+          <option :value="10">10개씩</option>
+          <option :value="20">20개씩</option>
+        </select>
+      </div>
     </div>
-    <table>
-      <thead>
-        <tr>
-          <th @click="sortBy('id')" class="sortable">
-            ID {{ sortKey === 'id' ? (sortAsc ? '▲' : '▼') : '' }}
-          </th>
-          <th @click="sortBy('name')" class="sortable">
-            이름 {{ sortKey === 'name' ? (sortAsc ? '▲' : '▼') : '' }}
-          </th>
-          <th @click="sortBy('role')" class="sortable">
-            역할 {{ sortKey === 'role' ? (sortAsc ? '▲' : '▼') : '' }}
-          </th>
-          <th @click="sortBy('score')" class="sortable">
-            점수 {{ sortKey === 'score' ? (sortAsc ? '▲' : '▼') : '' }}
-          </th>
-          <th>상태</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="row in paginatedData" :key="row.id">
-          <td>{{ row.id }}</td>
-          <td>{{ row.name }}</td>
-          <td>{{ row.role }}</td>
-          <td>{{ row.score }}</td>
-          <td><span class="badge" :class="row.status">{{ row.status }}</span></td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="pagination">
-      <AppButton @click="page--" v-if="page > 1">이전</AppButton>
-      <span>{{ page }} / {{ totalPages }} 페이지 (총 {{ filteredData.length }}건)</span>
-      <AppButton @click="page++" v-if="page < totalPages">다음</AppButton>
+    <div class="card overflow-hidden mb-3">
+      <table class="table table-borderless mb-0">
+        <thead>
+          <tr>
+            <th role="button" @click="sortBy('id')">ID {{ sortKey === 'id' ? (sortAsc ? '▲' : '▼') : '' }}</th>
+            <th role="button" @click="sortBy('name')">이름 {{ sortKey === 'name' ? (sortAsc ? '▲' : '▼') : '' }}</th>
+            <th role="button" @click="sortBy('role')">역할 {{ sortKey === 'role' ? (sortAsc ? '▲' : '▼') : '' }}</th>
+            <th role="button" @click="sortBy('score')">점수 {{ sortKey === 'score' ? (sortAsc ? '▲' : '▼') : '' }}</th>
+            <th>상태</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="row in paginatedData" :key="row.id">
+            <td>{{ row.id }}</td>
+            <td>{{ row.name }}</td>
+            <td>{{ row.role }}</td>
+            <td>{{ row.score }}</td>
+            <td><span class="badge" :class="statusBadge(row.status)">{{ row.status }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="d-flex align-items-center justify-content-between">
+      <span class="text-faint small">총 {{ filteredData.length }}건</span>
+      <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-outline-secondary btn-sm" @click="page--" :disabled="page <= 1">← 이전</button>
+        <span class="small">{{ page }} / {{ totalPages }}</span>
+        <button class="btn btn-outline-secondary btn-sm" @click="page++" :disabled="page >= totalPages">다음 →</button>
+      </div>
     </div>
   </div>
 </template>
@@ -105,26 +104,12 @@ export default {
         this.sortKey = key
         this.sortAsc = true
       }
+    },
+    statusBadge(status) {
+      if (status === 'active') return 'bg-success-subtle text-success'
+      if (status === 'inactive') return 'bg-danger-subtle text-danger'
+      return 'bg-warning-subtle text-warning'
     }
   }
 }
 </script>
-
-<style>
-.page-table { padding: 2rem; }
-.page-table h1 { color: #35495e; }
-.table-controls { display: flex; gap: 0.75rem; margin-bottom: 1rem; }
-.table-controls input { flex: 1; padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
-.table-controls select { padding: 0.5rem; border: 1px solid #ddd; border-radius: 4px; }
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
-th { background: #f8f8f8; color: #35495e; font-size: 0.85rem; }
-th.sortable { cursor: pointer; user-select: none; }
-th.sortable:hover { background: #eef; }
-.badge { padding: 0.15rem 0.5rem; border-radius: 10px; font-size: 0.75rem; }
-.badge.active { background: #e6f9f0; color: #42b883; }
-.badge.inactive { background: #fde8e8; color: #e74c3c; }
-.badge.pending { background: #fef3cd; color: #856404; }
-.pagination { display: flex; align-items: center; gap: 1rem; margin-top: 1rem; }
-.pagination span { color: #888; font-size: 0.85rem; }
-</style>

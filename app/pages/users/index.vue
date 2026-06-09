@@ -1,15 +1,17 @@
 <template>
-  <div class="page-users">
-    <h1>Users</h1>
-    <p v-if="loading">불러오는 중...</p>
-    <p v-else-if="error" class="error">{{ error }}</p>
-    <ul v-else>
-      <li v-for="user in users" :key="user.id">
-        <router-link :to="'/users/' + user.id">{{ user.name }}</router-link>
-        <span class="email">{{ user.email }}</span>
-      </li>
-    </ul>
-    <router-link to="/">← Home</router-link>
+  <div class="container py-4">
+    <h1 class="mb-3">Users</h1>
+    <p v-if="loading" class="text-muted">불러오는 중...</p>
+    <p v-else-if="error" class="text-danger small">{{ error }}</p>
+    <div v-else class="card overflow-hidden mb-3">
+      <ul class="list-unstyled mb-0">
+        <li v-for="user in users" :key="user.id" class="d-flex align-items-center gap-2 px-3 py-2 border-bottom">
+          <router-link :to="'/users/' + user.id">{{ user.name }}</router-link>
+          <span class="text-faint small ms-auto">{{ user.email }}</span>
+        </li>
+      </ul>
+    </div>
+    <router-link to="/" class="small">← Home</router-link>
   </div>
 </template>
 
@@ -36,13 +38,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.page-users { padding: 2rem; }
-.page-users h1 { color: #35495e; }
-.page-users ul { padding: 0; }
-.page-users li { margin: 0.4rem 0; list-style: none; }
-.page-users a { color: #42b883; }
-.page-users .email { margin-left: 0.75rem; color: #888; font-size: 0.9rem; }
-.page-users .error { color: #e74c3c; }
-</style>

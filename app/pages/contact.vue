@@ -1,13 +1,18 @@
 <template>
-  <div class="page-contact">
-    <h1>{{ heading }}</h1>
-    <form @submit.prevent="send">
-      <input v-model="name" placeholder="이름" />
-      <input v-model="email" type="email" placeholder="이메일" />
-      <textarea v-model="message" placeholder="메시지" rows="4"></textarea>
-      <AppButton @click="send">보내기</AppButton>
-    </form>
-    <p v-if="sent" class="success">메시지가 전송되었습니다!</p>
+  <div class="container py-4">
+    <h1 class="mb-3">{{ heading }}</h1>
+    <div class="card p-4">
+      <form @submit.prevent="send">
+        <label class="form-label small fw-bold">이름</label>
+        <input v-model="name" class="form-control mb-3" placeholder="이름" />
+        <label class="form-label small fw-bold">이메일</label>
+        <input v-model="email" type="email" class="form-control mb-3" placeholder="이메일" />
+        <label class="form-label small fw-bold">메시지</label>
+        <textarea v-model="message" class="form-control mb-3" placeholder="메시지" rows="4"></textarea>
+        <AppButton @click="send">보내기</AppButton>
+      </form>
+      <p v-if="sent" class="mt-3 mb-0 small fw-bold text-success-custom">메시지가 전송되었습니다!</p>
+    </div>
   </div>
 </template>
 
@@ -34,14 +39,3 @@ export default {
   }
 }
 </script>
-
-<style>
-.page-contact { padding: 2rem; max-width: 480px; }
-.page-contact h1 { color: #35495e; }
-.page-contact input,
-.page-contact textarea {
-  display: block; width: 100%; padding: 0.5rem; margin-bottom: 0.75rem;
-  border: 1px solid #ddd; border-radius: 4px; box-sizing: border-box;
-}
-.page-contact .success { color: #42b883; font-weight: bold; }
-</style>
