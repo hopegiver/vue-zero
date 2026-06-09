@@ -32,7 +32,7 @@ package/
 │       └── StyleInjector.ts     # <style> 블록 → DOM <style> 태그 주입
 ├── dist/
 │   └── vue-zero.js              # 빌드 결과물
-├── build.js                     # esbuild 빌드 + ../template/app/dist/ 자동 복사
+├── build.js                     # esbuild 빌드 + ../template/app/assets/js/ 자동 복사
 ├── package.json
 └── README.md
 ```
@@ -44,7 +44,7 @@ npm run dev      # 빌드 watch 모드 (파일 변경 시 자동 빌드 + templa
 npm run build    # 배포용 단일 파일 빌드
 ```
 
-빌드 시 `../template/app/dist/vue-zero.js`에 자동 복사됩니다.
+빌드 시 `../template/app/assets/js/vue-zero.js`에 자동 복사됩니다.
 template에서 `wrangler dev`를 실행하면 즉시 반영됩니다.
 
 ## 테스트
