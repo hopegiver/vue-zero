@@ -55,7 +55,7 @@ pages/
 
 **Layouts** — `layouts/default.vue` wraps all pages. Use `layout: 'admin'` or `layout: false` per page.
 
-**Auth guard** — Protect pages with `requiresAuth: true`. Built-in JWT support.
+**Auth guard** — When `auth.enabled: true`, all pages are protected by default. Mark public pages with `auth: false`. Built-in JWT support.
 
 **Page titles** — Set `title: 'My Page'` and `document.title` updates on navigation.
 

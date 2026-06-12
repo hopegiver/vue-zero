@@ -98,7 +98,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const layoutComponentCache = new Map<string, any>()
   const layoutNameCache = new Map<string, string | false>()
   const titleCache = new Map<string, string | null>()
-  const requiresAuthCache = new Map<string, boolean>()
+  const authCache = new Map<string, boolean>()  // true = 보호, false = 공개
   const recordByName = new Map(records.map(r => [r.name, r]))
 
   // 4. SFC/컴포넌트 로더
@@ -143,12 +143,12 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     })
     componentCache.set(name, comp)
 
-    // 페이지 메타 캐시 (layout, title, requiresAuth)
+    // 페이지 메타 캐시 (layout, title, auth)
     const opts = sfc.componentOptions as Record<string, unknown>
     const layoutOption = opts.layout
     layoutNameCache.set(name, layoutOption === false ? false : (layoutOption as string) ?? 'default')
     titleCache.set(name, (opts.title as string) ?? null)
-    requiresAuthCache.set(name, !!opts.requiresAuth)
+    authCache.set(name, opts.auth !== false)  // auth: false 인 페이지만 공개, 나머지는 보호
 
     return comp
   }
@@ -248,7 +248,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       if (title) document.title = title
 
       // 인증 가드
-      if (authGuard.isEnabled() && requiresAuthCache.get(name) && !authGuard.isAuthenticated()) {
+      if (authGuard.isEnabled() && authCache.get(name) && !authGuard.isAuthenticated()) {
         progress.done()
         return authGuard.getLoginPage()
       }
