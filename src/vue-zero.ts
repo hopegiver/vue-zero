@@ -205,6 +205,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const router = VueRouter.createRouter({
     history: VueRouter.createWebHistory(),
     routes,
+    scrollBehavior(to, from, savedPosition) {
+      return savedPosition || { top: 0 }
+    },
   })
 
   // 7. 페이지 전환 전에 리소스 준비 (SFC, 레이아웃)
