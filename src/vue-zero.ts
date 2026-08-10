@@ -179,7 +179,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
 
   // 5. 라우트 배열 생성
   const notFoundUrl = `${pagesDir}/404.vue`
-  const has404 = (await fetch(notFoundUrl, { method: 'HEAD' })).ok
+  const has404 = (await fetch(notFoundUrl)).ok
 
   const routes: import('vue-router').RouteRecordRaw[] = records.map(record => ({
     path: record.path,
