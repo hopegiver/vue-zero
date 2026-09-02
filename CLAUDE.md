@@ -1,5 +1,16 @@
 # vue-zero — 라이브러리 패키지
 
+## 새 세션 부트스트랩
+- **L0 (자동 주입):** `STATUS.md`(라이브 상태, 3,000바이트 이내 유지 — 검사 커맨드는 malgn-agent의 `project-standards` 스킬 §3이 정본) + 이 `CLAUDE.md`. 대부분 이것만으로 충분.
+- **L1 (필요할 때만):** malgnai-hub `project_get_context` — L0로 충분하면 호출하지 않는다.
+- **L2 (깊은 작업만):** `docs/README.md` 지도 → 필요한 문서만.
+
+**STATUS.md 재작성은 다음 6가지 상황으로 제한한다** — 그 외 평범한 진행 중에는 건드리지 않는다:
+①중요한 작업 완료 ②WBS 단계 변경 ③중요한 설계 결정 ④blocker 발생/해결 ⑤세션 종료 ⑥context compact 직전.
+그 외에는 malgnai-hub `work_record`/`decision_record`/`issue_record`에만 기록하고 STATUS.md는 그대로 둔다.
+
+**필수 규율:** 주요 결정/이슈/교훈은 malgnai-hub에 기록.
+
 ## 개요
 
 vue-zero는 AI 개발을 위한 제로빌드 Vue 3 라우터 라이브러리입니다.
