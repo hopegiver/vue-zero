@@ -18,7 +18,7 @@ Zero-build Vue 3 router for AI-driven development.
   <link href="/assets/css/base.css" rel="stylesheet">
   <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
   <script src="https://unpkg.com/vue-router@4/dist/vue-router.global.prod.js"></script>
-  <script src="https://unpkg.com/vue-ai-first/dist/vue-zero.js"></script>
+  <script src="https://unpkg.com/vue-zero-ai/dist/vue-zero.js"></script>
 </head>
 <body>
   <div id="app"></div>
@@ -58,6 +58,8 @@ pages/
 **Auth guard** — When `auth.enabled: true`, all pages are protected by default. Mark public pages with `auth: false`. Built-in JWT support.
 
 **Page titles** — Set `title: 'My Page'` and `document.title` updates on navigation.
+
+**Error page** — `pages/error.vue` is auto-detected and rendered when a page fails to load (fetch or script errors).
 
 **Design system** — Bootstrap 5 base with Notion-inspired `base.css` tokens (colors, typography, spacing, shadows). All rem-based for consistent scaling.
 
@@ -148,6 +150,7 @@ VueZero.createApp({
 2. **Options API only** — No `<script setup>`, no Composition API, no TypeScript
 3. **No `<style scoped>`** — Use Bootstrap classes + `base.css` tokens. Use class names for isolation when needed.
 4. **404 page** — `pages/404.vue` is auto-detected. Do NOT add it to `pages.json`
+5. **Error page** — `pages/error.vue` is auto-detected. Do NOT add it to `pages.json`
 
 ## License
 

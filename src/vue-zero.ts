@@ -181,6 +181,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const notFoundUrl = `${pagesDir}/404.vue`
   const has404 = (await fetch(notFoundUrl)).ok
 
+  const errorUrl = `${pagesDir}/error.vue`
+  const hasErrorPage = (await fetch(errorUrl)).ok
+
   const routes: import('vue-router').RouteRecordRaw[] = records.map(record => ({
     path: record.path,
     name: record.name,
@@ -214,9 +217,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const currentLayout = Vue.shallowRef(null as any)
   const currentLayoutName = Vue.ref('__pending__')
+  const currentError = Vue.shallowRef(null as any)
 
   router.beforeEach(async (to) => {
     progress.start()
+    currentError.value = null
 
     const name = String(to.name)
     const record = recordByName.get(name)
@@ -257,6 +262,14 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       }
     } catch (err) {
       console.error(`[vue-zero] 페이지 로드 실패: ${to.fullPath}`, err)
+      if (hasErrorPage) {
+        try {
+          const errorSfc = await loadSfc('error', errorUrl)
+          currentError.value = buildPageComponent('error', errorSfc)
+        } catch (errorPageErr) {
+          console.error('[vue-zero] error.vue 로드 실패', errorPageErr)
+        }
+      }
       progress.done()
       return false
     }
@@ -274,10 +287,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const LayoutWrapper = Vue.defineComponent({
     name: 'LayoutWrapper',
     setup() {
-      return { currentLayout, currentLayoutName }
+      return { currentLayout, currentLayoutName, currentError }
     },
     template: `
-      <component v-if="currentLayout" :is="currentLayout" :key="currentLayoutName" />
+      <component v-if="currentError" :is="currentError" />
+      <component v-else-if="currentLayout" :is="currentLayout" :key="currentLayoutName" />
       <router-view v-else-if="currentLayoutName !== '__pending__'" />
     `,
   })
@@ -296,6 +310,6 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     app.component(name, comp as Parameters<typeof app.component>[1])
   })
 
-  await router.isReady()
+  await router.isReady().catch(() => {})
   app.mount('#app')
 }

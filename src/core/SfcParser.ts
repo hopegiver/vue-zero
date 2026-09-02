@@ -75,8 +75,7 @@ async function evalScript(scriptStr: string): Promise<Record<string, unknown>> {
     const module = await import(/* @vite-ignore */ url)
     return module.default ?? {}
   } catch (e) {
-    console.error('[vue-zero] SfcParser: script eval failed', e)
-    return {}
+    throw new Error(`[vue-zero] script eval failed: ${(e as Error).message}`)
   } finally {
     URL.revokeObjectURL(url)
   }
