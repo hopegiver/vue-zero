@@ -44,6 +44,10 @@ package/
 ├── dist/
 │   └── vue-zero.js              # 빌드 결과물
 ├── build.js                     # esbuild 빌드 + ../template/app/assets/js/ 자동 복사
+├── test/                        # E2E 스위트 (Playwright) — 아래 "테스트" 섹션 참고
+├── scripts/                     # 릴리스 게이트: verify-static/verify-e2e/verify-published, changelog(릴리스 노트 추출)
+├── CHANGELOG.md                 # 버전별 변경 (GitHub Release 본문의 원본)
+├── .github/workflows/publish.yml  # 태그 v* push → 검증 게이트 → npm publish → Release
 ├── package.json
 └── README.md
 ```
@@ -76,7 +80,8 @@ test/
 
 - 기본은 `../dist/vue-zero.js`를 검증한다. 소스를 고쳤으면 먼저 `pnpm build`. 다른 파일을 검증하려면 `VUEZERO_DIST=<경로> pnpm test` (예: tarball에서 꺼낸 dist).
 - 일부 앱만: `VZ_APPS=basic,auth pnpm exec playwright test -c test/playwright.config.js --project=basic --project=auth`.
-- `test.fixme` 로 남긴 알려진 라이브러리 버그 재현은 `VZ_RUN_FIXME=1` 로 실행한다.
+- `test.fixme` 로 남긴 알려진 라이브러리 버그 재현은 `VZ_RUN_FIXME=1` 로 실행한다. 현재 1건: 느린 이동 A 뒤에 B 로 빠르게 이동하면 취소된 A 의 `beforeEach` 후속 처리가 `currentLayout`/`switchPage`/`document.title` 을 덮어씀 (`e2e/basic/routing.spec.js` "빠른 연속 이동", src 미수정).
+- 테스트 검증력 확인(변이): `VUEZERO_DIST` 에 과거 릴리스의 dist 를 넣어(`git show <커밋>:dist/vue-zero.js > /tmp/x.js`) 회귀 테스트가 실제로 실패하는지 본다. 예: v1.2.0 dist 는 지연 로딩/base64url 테스트가, v1.1.3 dist 는 isReady 회귀가 실패해야 한다.
 - 앱별 옵션은 `useOptions(page, {...})`(addInitScript)로 주입하고, 토큰은 `seedStorage`로 주입한다. 네트워크 실패/지연은 `page.route` 와 `gate()`(수동 해제)로 만든다. 고정 sleep 금지 — 상태를 기다린다(`settle()`은 프레임만 흘려보낸다).
 - 테스트 앱 코드도 vue-zero 규칙(Options API, scoped 금지, import 없음)을 따른다.
 
@@ -98,8 +103,8 @@ test/
 
 1. `package.json` 버전을 올리고 `CHANGELOG.md`에 `## [X.Y.Z] - YYYY-MM-DD` 항목 추가 (GitHub Release 본문이 여기서 추출됨)
 2. `pnpm run build` 후 `dist/vue-zero.js`까지 **커밋** (커밋/푸시를 배포보다 먼저)
-3. `pnpm run release:check` — CI와 같은 `scripts/verify-static.mjs` + `scripts/verify-e2e.mjs`를 로컬에서 실행 (작업 트리가 클린해야 통과)
+3. `pnpm run release:check` — CI와 같은 `scripts/verify-static.mjs` + `scripts/verify-e2e.mjs`를 로컬에서 실행 (src·dist·메타 파일이 클린해야 통과, 이미 게시된 버전이면 실패)
 4. `git push` 후 `git tag vX.Y.Z && git push origin vX.Y.Z`
-5. CI(`.github/workflows/publish.yml`)가 verify-static ∥ verify-e2e → publish(`--provenance`) → post-publish 검증(레지스트리·tarball dist 동일) → GitHub Release 순으로 자동 진행
+5. CI(`.github/workflows/publish.yml`)가 verify-static ∥ verify-e2e → publish(`--provenance`) → post-publish 검증(레지스트리·tarball dist 동일) → GitHub Release 순으로 자동 진행. publish 잡은 재빌드 없이 커밋된 dist를 그대로 게시한다. 일부 잡만 실패하면 "Re-run failed jobs"로 재실행(전체 재실행은 이미 게시된 버전 검사로 실패)
 
 **로컬 직접 `npm publish`는 CI 장애 시 핫픽스 경로로만** 사용합니다(`prepublishOnly`가 경고만 출력하고 막지는 않음). 이 경우 provenance가 없고 게이트를 건너뛰므로 사유를 `CHANGELOG.md`에 남깁니다.

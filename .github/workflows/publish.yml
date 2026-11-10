@@ -22,8 +22,12 @@ jobs:
   verify-static:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      RELEASE_BRANCH: ${{ github.event.repository.default_branch }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 태그 커밋이 기본 브랜치에 포함되는지 검사(merge-base)
 
       - uses: pnpm/action-setup@v4
         with:
@@ -81,6 +85,8 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
+  # 이 잡은 install/build 없이 태그 커밋에 커밋된 dist를 그대로 게시한다.
+  # verify-static이 "커밋된 dist == 재빌드 결과"를, verify-e2e가 그 dist의 tarball을 검증했으므로 검증본 == 게시본.
   publish:
     needs: [verify-static, verify-e2e]
     runs-on: ubuntu-latest
@@ -90,23 +96,23 @@ jobs:
       id-token: write # npm Trusted Publishing (OIDC) + provenance
     steps:
       - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
         with:
-          version: ${{ env.PNPM_VERSION }}
+          persist-credentials: false
 
       - uses: actions/setup-node@v4
         with:
           node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
-          cache: pnpm
 
-      - name: Ensure npm CLI supports trusted publishing
-        run: npm install -g npm@latest
+      # Trusted Publishing(OIDC)은 npm >= 11.5.1 필요. 고정 버전만 설치한다(@latest 금지).
+      - name: Pin npm CLI for trusted publishing
+        run: npm install -g npm@11.5.1 --ignore-scripts
 
-      - run: pnpm install --frozen-lockfile
-
-      - run: pnpm run build
+      # publish 전 방어: 작업 트리가 태그 커밋 그대로이고 dist가 커밋본과 동일해야 한다(재빌드 없음)
+      - name: Assert dist is the committed file
+        run: |
+          test -z "$(git status --porcelain)"
+          git cat-file -p "HEAD:dist/vue-zero.js" | cmp - dist/vue-zero.js
 
       - run: npm publish --provenance
 
@@ -144,4 +150,10 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+        # 재실행 멱등: 이미 Release가 있으면 건너뜀
+        run: |
+          if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+            echo "Release $GITHUB_REF_NAME 이미 존재 — 건너뜀"
+          else
+            gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
+          fi

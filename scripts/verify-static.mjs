@@ -15,6 +15,8 @@ const EXPECTED_PACK = ['LICENSE', 'README.md', 'dist/vue-zero.js', 'package.json
 const argTag = process.argv.includes('--tag') ? process.argv[process.argv.indexOf('--tag') + 1] : undefined
 const tag = argTag || process.env.RELEASE_TAG || process.env.GITHUB_REF_NAME || `v${pkg.version}`
 
+const inCI = process.env.GITHUB_ACTIONS === 'true'
+
 const sha = buf => createHash('sha256').update(buf).digest('hex').slice(0, 16)
 const run = (cmd, args) => execFileSync(cmd, args, { cwd: root, encoding: 'buffer', stdio: ['ignore', 'pipe', 'pipe'] })
 
@@ -43,6 +45,42 @@ check('CHANGELOG에 해당 버전 항목 존재', () => {
   const notes = extractNotes(pkg.version)
   if (!notes) throw new Error(`CHANGELOG.md에 [${pkg.version}] 항목이 없거나 비어 있음`)
   return `${notes.split('\n').length}줄`
+})
+
+// 태그 커밋이 기본 브랜치에 포함돼 있어야 한다 (임의 브랜치/고아 커밋에 찍은 태그 차단). CI 에서만 강제, 로컬은 푸시 전이라 경고만.
+check('태그 커밋이 origin 기본 브랜치에 포함', () => {
+  let branch = process.env.RELEASE_BRANCH
+  if (!branch) {
+    try { branch = run('git', ['symbolic-ref', '--short', 'refs/remotes/origin/HEAD']).toString().trim().replace(/^origin\//, '') } catch {}
+  }
+  if (!branch) {
+    if (inCI) throw new Error('기본 브랜치명을 알 수 없음 (RELEASE_BRANCH 미설정, origin/HEAD 없음)')
+    return '건너뜀(로컬, 원격 브랜치 정보 없음)'
+  }
+  try { run('git', ['rev-parse', '--verify', '--quiet', `refs/remotes/origin/${branch}`]) } catch {
+    if (inCI) throw new Error(`origin/${branch} 를 찾을 수 없음 (checkout fetch-depth: 0 필요)`)
+    return `건너뜀(로컬, origin/${branch} 없음)`
+  }
+  try { run('git', ['merge-base', '--is-ancestor', 'HEAD', `origin/${branch}`]) } catch {
+    if (inCI) throw new Error(`태그 커밋 ${run('git', ['rev-parse', '--short', 'HEAD']).toString().trim()} 가 origin/${branch} 에 포함되지 않음 — ${branch} 에 머지한 커밋에만 태그를 찍으세요`)
+    return `경고(로컬): HEAD 가 origin/${branch} 에 아직 없음 — 푸시 후 태그하세요 (CI 에서는 실패 처리)`
+  }
+  return `origin/${branch} 포함`
+})
+
+// 이미 게시된 버전이면 실패. 네트워크 불가 시: CI 는 실패(게시 불가를 모르고 진행하지 않음), 로컬은 경고 후 통과.
+check('npm에 미게시 버전', () => {
+  let out
+  try {
+    out = run('npm', ['view', `${pkg.name}@${pkg.version}`, 'version', '--json', '--ignore-scripts']).toString().trim()
+  } catch (e) {
+    const err = `${e.stderr || ''}${e.stdout || ''}`
+    if (/E404|404 Not Found|is not in this registry/.test(err)) return `${pkg.name}@${pkg.version} 미게시`
+    if (inCI) throw new Error(`npm 레지스트리 조회 실패: ${err.split('\n')[0] || e.message}`)
+    return `경고(로컬): 레지스트리 조회 실패로 건너뜀 (${(err.split('\n')[0] || e.message).slice(0, 80)})`
+  }
+  if (out) throw new Error(`${pkg.name}@${pkg.version} 는 이미 npm에 게시된 버전입니다 — package.json 버전을 올리세요`)
+  return `${pkg.name}@${pkg.version} 미게시`
 })
 
 // 빌드 전에 커밋된 dist를 읽어 둔다(빌드가 working tree의 dist를 덮어쓰므로)
