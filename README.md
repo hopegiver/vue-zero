@@ -51,7 +51,7 @@ pages/
 
 **File-based routing** — Nuxt-style dynamic routes, catch-all routes, nested routes.
 
-**Auto components** — Put `.vue` files in `components/` and list them in `components/components.json`. They're globally available in all pages.
+**Auto components** — Put `.vue` files in `components/` and list them in `components/components.json`. They're globally available in all pages and are loaded lazily — only the components a page (or layout) actually uses are fetched when that page opens.
 
 **Layouts** — `layouts/default.vue` wraps all pages. Use `layout: 'admin'` or `layout: false` per page.
 

@@ -72,6 +72,8 @@ cd template && wrangler dev
 
 http://localhost:8787 에서 확인합니다.
 
+**검증 방침:** 단발성 브라우저 확인은 ego-browser, 정기·반복 E2E 회귀 테스트는 Playwright(`../template/tests/`, `npm test`)를 사용합니다.
+
 ## 구현 규칙
 
 - **빌드 결과물**: `dist/vue-zero.js` 단일 파일만. `.d.ts`, `.map` 등 생성 금지

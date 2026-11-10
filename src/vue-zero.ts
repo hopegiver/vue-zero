@@ -78,14 +78,20 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const styleInjector = getStyleInjector()
   const progress = createProgressBar()
 
-  // 1. components.json + pages.json 병렬 fetch
-  const [compNames, records] = await Promise.all([
+  const notFoundUrl = `${pagesDir}/404.vue`
+  const errorUrl = `${pagesDir}/error.vue`
+  const exists = (url: string) => fetch(url).then(r => r.ok, () => false)
+
+  // 1. components.json + pages.json + 404/error 존재 확인 병렬 fetch
+  const [compNames, records, has404, hasErrorPage] = await Promise.all([
     componentLoader.readManifest(),
     routeScanner.scan(),
+    exists(notFoundUrl),
+    exists(errorUrl),
   ])
 
-  // 2. 전역 컴포넌트 로드
-  const globalComponents = await componentLoader.loadAll(compNames)
+  // 2. 전역 컴포넌트 등록 (지연 로딩 — 여기서는 fetch하지 않음)
+  const globalComponents = componentLoader.createAsyncComponents(compNames)
 
   if (records.length === 0) {
     console.warn('[vue-zero] No pages found. Create pages/pages.json: ["index", "about", ...]')
@@ -105,6 +111,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   async function loadSfc(name: string, filePath: string) {
     if (sfcCache.has(name)) return sfcCache.get(name)!
     const sfc = await parseSfc(filePath, `page-${name}`, 'page')
+    await componentLoader.preload(sfc.template)
     sfcCache.set(name, sfc)
     return sfc
   }
@@ -158,6 +165,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     const url = `${layoutsDir}/${name}.vue`
     try {
       const { template, componentOptions } = await parseSfc(url, `layout-${name}`, 'layout')
+      await componentLoader.preload(template)
       const layoutTemplate = template
         .replace(/<slot\s*\/>/, '<router-view />')
         .replace(/<slot><\/slot>/, '<router-view />')
@@ -178,12 +186,6 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   }
 
   // 5. 라우트 배열 생성
-  const notFoundUrl = `${pagesDir}/404.vue`
-  const has404 = (await fetch(notFoundUrl)).ok
-
-  const errorUrl = `${pagesDir}/error.vue`
-  const hasErrorPage = (await fetch(errorUrl)).ok
-
   const routes: import('vue-router').RouteRecordRaw[] = records.map(record => ({
     path: record.path,
     name: record.name,
