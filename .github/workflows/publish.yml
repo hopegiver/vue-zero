@@ -71,16 +71,13 @@ jobs:
       - name: E2E against packed tarball
         run: node scripts/verify-e2e.mjs
 
-      - name: Upload Playwright report and traces
+      # playwright.config.js: outputDir=test/.results (실패 트레이스 포함), CI reporter는 list+github(HTML 리포트 없음)
+      - name: Upload Playwright traces
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: playwright-report
-          path: |
-            test/playwright-report/
-            test/test-results/
-            playwright-report/
-            test-results/
+          name: playwright-traces
+          path: test/.results/
           if-no-files-found: ignore
           retention-days: 14
 

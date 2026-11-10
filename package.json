@@ -17,7 +17,9 @@
     "dev": "node --watch build.js",
     "build": "node build.js",
     "test": "playwright test -c test/playwright.config.js",
-    "test:basic": "VZ_APPS=basic playwright test -c test/playwright.config.js"
+    "test:basic": "VZ_APPS=basic playwright test -c test/playwright.config.js",
+    "release:check": "node scripts/verify-static.mjs && node scripts/verify-e2e.mjs",
+    "prepublishOnly": "node -e \"if(!process.env.CI)console.warn('\\n[vue-zero-ai] 경고: 로컬 publish입니다. 정식 릴리스는 태그 push(CI 게이트)로 진행하세요. 사전 점검: pnpm run release:check\\n')\""
   },
   "keywords": [
     "vue",
