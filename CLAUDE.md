@@ -84,7 +84,12 @@ http://localhost:8787 에서 확인합니다.
 
 ## npm 배포
 
-```bash
-npm run build
-npm publish
-```
+**1.3.1부터 적용.** 게시는 CI 게이트(정적 검증 + E2E)를 통과한 태그 push로만 이루어집니다. **`v1.3.0` 태그는 만들지 않습니다**(1.3.0은 로컬 publish로 이미 게시됨, provenance 없음 — `CHANGELOG.md` 상단 참고).
+
+1. `package.json` 버전을 올리고 `CHANGELOG.md`에 `## [X.Y.Z] - YYYY-MM-DD` 항목 추가 (GitHub Release 본문이 여기서 추출됨)
+2. `pnpm run build` 후 `dist/vue-zero.js`까지 **커밋** (커밋/푸시를 배포보다 먼저)
+3. `pnpm run release:check` — CI와 같은 `scripts/verify-static.mjs` + `scripts/verify-e2e.mjs`를 로컬에서 실행 (작업 트리가 클린해야 통과)
+4. `git push` 후 `git tag vX.Y.Z && git push origin vX.Y.Z`
+5. CI(`.github/workflows/publish.yml`)가 verify-static ∥ verify-e2e → publish(`--provenance`) → post-publish 검증(레지스트리·tarball dist 동일) → GitHub Release 순으로 자동 진행
+
+**로컬 직접 `npm publish`는 CI 장애 시 핫픽스 경로로만** 사용합니다(`prepublishOnly`가 경고만 출력하고 막지는 않음). 이 경우 provenance가 없고 게이트를 건너뛰므로 사유를 `CHANGELOG.md`에 남깁니다.

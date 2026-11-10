@@ -1,5 +1,6 @@
 name: Publish to npm
 
+# 태그 v* push → verify-static ∥ verify-e2e → publish → post-publish → GitHub Release
 on:
   push:
     tags:
@@ -7,22 +8,101 @@ on:
 
 permissions:
   contents: read
-  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  # pnpm-workspace.yaml의 allowBuilds는 pnpm 10.26+ 문법 — 구버전(9)은 "packages field missing"으로 실패한다
+  PNPM_VERSION: 10.26.0
+  NODE_VERSION: 22
 
 jobs:
-  publish:
+  verify-static:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
 
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Static release checks
+        run: node scripts/verify-static.mjs --tag "$GITHUB_REF_NAME"
+
+  verify-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        id: pw-cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      # 캐시 적중 시 브라우저 다운로드는 건너뛰고 OS 의존 패키지만 설치된다
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # npm pack tarball을 풀어 그 안의 dist/vue-zero.js로 E2E 실행 (저장소 파일이 아니라 실제 산출물 검증)
+      - name: E2E against packed tarball
+        run: node scripts/verify-e2e.mjs
+
+      - name: Upload Playwright report and traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            test/playwright-report/
+            test/test-results/
+            playwright-report/
+            test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  publish:
+    needs: [verify-static, verify-e2e]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      id-token: write # npm Trusted Publishing (OIDC) + provenance
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
           registry-url: 'https://registry.npmjs.org'
+          cache: pnpm
 
       - name: Ensure npm CLI supports trusted publishing
         run: npm install -g npm@latest
@@ -32,3 +112,39 @@ jobs:
       - run: pnpm run build
 
       - run: npm publish --provenance
+
+  post-publish:
+    needs: publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      # 레지스트리 전파 지연을 고려해 재시도(기본 18회 x 10초), 게시 tarball의 dist == 태그 커밋의 dist
+      - name: Verify published package
+        run: node scripts/verify-published.mjs "${GITHUB_REF_NAME#v}"
+
+  github-release:
+    needs: post-publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write # Release 생성은 이 잡에만 부여
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Extract release notes from CHANGELOG.md
+        run: node scripts/changelog.mjs "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/release-notes.md"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --notes-file "$RUNNER_TEMP/release-notes.md"
