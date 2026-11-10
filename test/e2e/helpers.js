@@ -73,3 +73,22 @@ export const sorted = (arr) => [...arr].sort()
 /** 몇 프레임 흘려보내 직전 렌더/마이크로태스크 부수효과가 반영되게 한다 (고정 sleep 아님) */
 export const settle = (page, frames = 5) =>
   page.evaluate(async (n) => { for (let i = 0; i < n; i++) await new Promise((r) => requestAnimationFrame(r)) }, frames)
+
+/** localStorage 읽기 (페이지가 열려 있어야 함) */
+export const readToken = (page, key = 'token') => page.evaluate((k) => localStorage.getItem(k), key)
+
+/** 서버 픽스처에서 토큰을 받아온다 (kind: valid|b64url|expired|noExp|badSignature|garbage|badPayload) */
+export async function fetchToken(request, kind) {
+  const res = await request.get(`/api/token?kind=${kind}`)
+  if (!res.ok()) throw new Error(`token fixture ${kind}: ${res.status()}`)
+  return (await res.json()).token
+}
+
+/** Date.now 에 오프셋을 더해 "시간 경과"를 흉내 낸다 (페이지 타이머는 건드리지 않음). window.__skewMs 를 바꿔 조절. */
+export async function installClockSkew(page) {
+  await page.addInitScript(() => {
+    window.__skewMs = 0
+    const real = Date.now.bind(Date)
+    Date.now = () => real() + window.__skewMs
+  })
+}

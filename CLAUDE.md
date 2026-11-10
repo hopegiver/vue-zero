@@ -51,28 +51,38 @@ package/
 ## 개발 명령어
 
 ```bash
-npm run dev      # 빌드 watch 모드 (파일 변경 시 자동 빌드 + template에 복사)
-npm run build    # 배포용 단일 파일 빌드
+pnpm install     # 의존성 (pnpm 전용, npm install 금지)
+pnpm dev         # 빌드 watch 모드 (파일 변경 시 자동 빌드 + template에 복사)
+pnpm build       # 배포용 단일 파일 빌드
+pnpm test        # 전체 E2E (Playwright, 앱 4개 병렬)
+pnpm test:basic  # basic 앱만
 ```
 
 빌드 시 `../template/app/assets/js/vue-zero.js`에 자동 복사됩니다.
-template에서 `wrangler dev`를 실행하면 즉시 반영됩니다.
 
 ## 테스트
 
-라이브러리 테스트는 `../template/`에서 `wrangler dev`로 실행합니다.
+라이브러리 자체 E2E 스위트가 `test/`에 있습니다 (Playwright + Chromium, 의존성 없는 Node 정적 서버. wrangler/template 불필요, Vue·vue-router도 devDependency로 로컬 서빙).
 
-```bash
-# 터미널 1: 라이브러리 watch
-cd package && npm run dev
-
-# 터미널 2: 앱 서버
-cd template && wrangler dev
+```
+test/
+├── server.mjs              # 정적 서버(SPA fallback) + 픽스처 API(/api/login, /api/token, /api/me, /api/slow, /api/status/:code). HEAD 는 405
+├── jwt.mjs                 # 테스트용 HS256 JWT (서버·e2e 공유)
+├── playwright.config.js    # 앱별 project + webServer (포트 4101~4104)
+├── scripts/gen-stress.mjs  # stress 앱 컴포넌트 300개 생성 (생성물은 .gitignore)
+├── apps/{basic,auth,custom-dirs,stress}/   # 각 앱의 index.html 은 window.__VZ_OPTIONS__ 를 createApp 옵션으로 쓴다
+└── e2e/{basic,auth,custom-dirs,stress}/*.spec.js, e2e/helpers.js
 ```
 
-http://localhost:8787 에서 확인합니다.
+- 기본은 `../dist/vue-zero.js`를 검증한다. 소스를 고쳤으면 먼저 `pnpm build`. 다른 파일을 검증하려면 `VUEZERO_DIST=<경로> pnpm test` (예: tarball에서 꺼낸 dist).
+- 일부 앱만: `VZ_APPS=basic,auth pnpm exec playwright test -c test/playwright.config.js --project=basic --project=auth`.
+- `test.fixme` 로 남긴 알려진 라이브러리 버그 재현은 `VZ_RUN_FIXME=1` 로 실행한다.
+- 앱별 옵션은 `useOptions(page, {...})`(addInitScript)로 주입하고, 토큰은 `seedStorage`로 주입한다. 네트워크 실패/지연은 `page.route` 와 `gate()`(수동 해제)로 만든다. 고정 sleep 금지 — 상태를 기다린다(`settle()`은 프레임만 흘려보낸다).
+- 테스트 앱 코드도 vue-zero 규칙(Options API, scoped 금지, import 없음)을 따른다.
 
-**검증 방침:** 단발성 브라우저 확인은 ego-browser, 정기·반복 E2E 회귀 테스트는 Playwright(`../template/tests/`, `npm test`)를 사용합니다.
+**규칙:** 버그 수정은 반드시 재현 테스트와 함께 넣는다 (테스트 이름/주석에 버전 표기). 라이브러리 동작을 바꾸는 변경은 `pnpm build && pnpm test` 통과 후에만 커밋한다.
+
+**검증 방침:** 단발성 브라우저 확인은 ego-browser, 정기·반복 E2E 회귀 테스트는 Playwright(`test/`, `pnpm test`)를 사용합니다. 단발 확인에서 잡은 중요한 시나리오는 `test/e2e/`로 승격합니다. (`../template/tests/`는 데모 앱 자체의 테스트다.)
 
 ## 구현 규칙
 
