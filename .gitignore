@@ -1,3 +1,7 @@
 node_modules/
 .wrangler/
 STATUS.md
+test/.results/
+test/apps/stress/pages/
+test/apps/stress/components/
+playwright-report/

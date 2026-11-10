@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>basic-app</title>
+  <script src="/lib/vue.js"></script>
+  <script src="/lib/vue-router.js"></script>
+  <script src="/lib/vue-zero.js"></script>
+</head>
+<body>
+  <div id="app"></div>
+  <script>
+    // 테스트가 addInitScript 로 window.__VZ_OPTIONS__ 를 주입해 createApp 옵션을 바꾼다
+    VueZero.createApp(window.__VZ_OPTIONS__ || {})
+  </script>
+</body>
+</html>
