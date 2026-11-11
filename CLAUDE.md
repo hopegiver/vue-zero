@@ -46,10 +46,10 @@ package/
 │   └── vue-zero.js              # 빌드 결과물
 ├── build.js                     # esbuild 빌드 + ../template/app/assets/js/ 자동 복사
 ├── test/                        # E2E 스위트 (Playwright) — 아래 "테스트" 섹션 참고
-├── scripts/                     # 릴리스 게이트: verify-static/verify-e2e/verify-published, changelog(릴리스 노트 추출)
+├── scripts/                     # 릴리스 게이트: verify-static/verify-e2e/publish-gate(prepublishOnly), verify-published(publish 후 수동 확인), changelog(릴리스 노트 추출)
 ├── CHANGELOG.md                 # 버전별 변경 (GitHub Release 본문의 원본)
-├── .github/workflows/ci.yml       # main push/PR → E2E (publish 안 함, 게이트 환경을 태그 전에 미리 검증)
-├── .github/workflows/publish.yml  # 태그 v* push → 검증 게이트 → npm publish → Release
+├── .github/workflows/ci.yml       # main push/PR → E2E (게이트 환경을 태그 전에 미리 검증)
+├── .github/workflows/release.yml  # 태그 v* push(또는 수동 tag 입력) → verify-static ∥ verify-e2e → GitHub Release (npm publish 안 함)
 ├── package.json
 └── README.md
 ```
@@ -107,14 +107,14 @@ test/
 - **주석 최소화**: 코드가 자명하면 주석 생략
 - **CSP**: Blob URL + dynamic import 사용. `unsafe-eval` 의존 금지
 
-## npm 배포
+## 릴리스 (GitHub Release)와 npm 게시
 
-**1.3.1부터 적용** (1.3.1이 게이트를 통과하는 첫 릴리스). 게시는 CI 게이트(정적 검증 + E2E)를 통과한 태그 push로만 이루어집니다. **`v1.3.0` 태그는 만들지 않습니다**(1.3.0은 로컬 publish로 이미 게시됨, provenance 없음 — `CHANGELOG.md` 상단 참고).
+**태그/Release와 npm 게시는 분리됩니다.** 태그 push → CI 게이트 → GitHub Release는 파이프라인이 자동으로 하고, npm publish는 소유자가 가끔 최종 버전만 로컬에서 직접 합니다. npm에 게시하지 않은 버전도 태그·Release가 존재할 수 있습니다(`v1.3.1`: npm 미게시 태그, 삭제하지 않음). 게이트는 1.4.0부터 적용되며 `v1.3.0` 태그는 만들지 않습니다.
 
-1. `package.json` 버전을 올리고 `CHANGELOG.md`에 `## [X.Y.Z] - YYYY-MM-DD` 항목 추가 (GitHub Release 본문이 여기서 추출됨)
-2. `pnpm run build` 후 `dist/vue-zero.js`까지 **커밋** (커밋/푸시를 배포보다 먼저)
-3. `pnpm run release:check` — CI와 같은 `scripts/verify-static.mjs` + `scripts/verify-e2e.mjs`를 로컬에서 실행 (src·dist·메타 파일이 클린해야 통과, 이미 게시된 버전이면 실패)
-4. `git push` 후 `git tag vX.Y.Z && git push origin vX.Y.Z`
-5. CI(`.github/workflows/publish.yml`)가 verify-static ∥ verify-e2e → publish(`--provenance`) → post-publish 검증(레지스트리·tarball dist 동일) → GitHub Release 순으로 자동 진행. publish 잡은 재빌드 없이 커밋된 dist를 그대로 게시한다. 일부 잡만 실패하면 "Re-run failed jobs"로 재실행(전체 재실행은 이미 게시된 버전 검사로 실패)
+1. `package.json` 버전을 올리고 `CHANGELOG.md`에 `## [X.Y.Z] - YYYY-MM-DD` 항목 추가 (Release 본문이 여기서 추출됨. npm에 게시하지 않을 버전은 제목 끝에 ` (GitHub 릴리스만, npm 미게시)`). `pnpm run build` 후 `dist/vue-zero.js`까지 **커밋**
+2. `pnpm run release:check` — CI와 같은 `scripts/verify-static.mjs` + `scripts/verify-e2e.mjs`를 로컬에서 실행 (src·dist·메타 파일이 클린해야 통과, 로컬에서는 push 여부를 경고만 함)
+3. `git push origin main` (CI `ci.yml` E2E 확인) → `git tag vX.Y.Z` → `git push origin vX.Y.Z`
+4. `.github/workflows/release.yml`이 verify-static(`--allow-published`) ∥ verify-e2e → GitHub Release 생성(제목 `vX.Y.Z`, 본문은 기본 브랜치 `CHANGELOG.md`의 해당 항목 + 마지막 줄에 npm 게시 여부). 이미 Release가 있으면 노트만 갱신(멱등)이라 "Re-run all jobs"도 안전. 기존 태그 재실행/소급 릴리스는 Actions → Release → Run workflow에 `tag` 입력(워크플로 파일은 main 것이 쓰이고, 체크아웃은 그 태그)
+5. **npm 게시(소유자, 로컬, 가끔 최종 버전만):** `npm publish` 시 `prepublishOnly`(`scripts/publish-gate.mjs`)가 `verify-static --require-pushed`(`git fetch` 후 HEAD가 `origin/main`에 없으면 FAIL, 이미 npm에 게시된 버전이면 FAIL) + `verify-e2e`를 실행하고 실패하면 publish를 막는다. 긴급 시에만 `VZ_SKIP_GATE=1`(큰 경고 후 통과, 사유를 CHANGELOG에 남김). 통과 후 `pnpm verify:published` — 레지스트리 노출과 게시된 tarball의 dist == 커밋된 dist(바이트 동일)를 1줄로 확인(태그 없는 과거 버전은 `--ref <커밋>`)
 
-**로컬 직접 `npm publish`는 CI 장애 시 핫픽스 경로로만** 사용합니다(`prepublishOnly`가 경고만 출력하고 막지는 않음). 이 경우 provenance가 없고 게이트를 건너뛰므로 사유를 `CHANGELOG.md`에 남깁니다.
+Trusted Publisher/CI npm 게시: 현재 미사용.
