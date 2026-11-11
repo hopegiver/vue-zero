@@ -14,7 +14,8 @@ vue-zero(런타임 SFC 컴파일, 제로빌드)와 Nuxt 4(`ssr:false` 정적 산
 | `run.mjs` | Playwright(Chromium) 러너. 변형×규모×프로필×반복, 변형 순서 회전(인터리브) |
 | `summarize.mjs` | raw jsonl → `*.summary.json`(중앙값/p90/min/max) + `*.tables.md`(승패표) |
 | `toolchain.mjs` | 설치·generate·dev 서버 기동·산출물 크기·파일 수 |
-| `budget.mjs` / `budget.json` | 예산 게이트(`pnpm bench:budget`) |
+| `budget.mjs` / `budget.json` | 예산 게이트(`pnpm bench:budget`) — vz-manifest 변형 게이트 포함 |
+| `compare.mjs` / `probe.mjs` | 결정적 지표 비교(vz·vz-manifest·vz-immutable·nuxt × S/M/L, 웨이브 포함) → `results/compare.{json,tables.md}` / 공용 측정 탐침 |
 | `scripts/make-cert.sh`, `scripts/wait-quiet.sh` | 자체서명 인증서 생성 / 한가해질 때까지 대기 |
 
 ## 실행
@@ -36,7 +37,7 @@ pnpm bench:budget                                     # 예산 게이트 (Phase 
 ## 프로필 / 변형
 
 - 프로필 P1=제한 없음, P2=브로드밴드(RTT 40ms, 10Mbps), P3=느린 4G + 중저사양 모바일(RTT 150ms, 1.6Mbps, CPU 4x).
-- 변형 `vz`(해시 없음 → ETag/304 재검증), `vz-immutable`(**상한 시뮬레이션**: 모든 정적 파일 immutable — scan 이 파일 해시를 URL 에 넣었을 때의 이득 상한 추정, 실제 구현 아님), `nuxt`.
+- 변형 `vz`(해시 없음 → ETag/304 재검증), `vz-manifest`(`createApp({manifest:true})` + 영속 캐시; 러너가 prod 호스트 `vzm.bench.test` 로 접속해야 캐시가 켜진다 — 127.0.0.1 은 dev 판별), `vz-immutable`(**상한 시뮬레이션**: 모든 정적 파일 immutable — scan 이 파일 해시를 URL 에 넣었을 때의 이득 상한 추정, 실제 구현 아님), `nuxt`.
 - 세션 1회 = 새 컨텍스트(콜드) → 콜드 로드 → SPA 이동(첫/재방문/20연속) → 메모리(GC 후) → 같은 컨텍스트 새 탭에서 웜 로드.
 
 ## CI 연결 제안 (워크플로는 수정하지 않았다)

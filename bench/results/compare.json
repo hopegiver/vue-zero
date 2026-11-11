@@ -1,0 +1,1485 @@
+{
+ "meta": {
+  "started": "2026-11-11T04:14:31.871Z",
+  "chromium": "151.0.7922.34",
+  "reps": 3,
+  "loadavgStart": [
+   17.50048828125,
+   13.1962890625,
+   13.0224609375
+  ],
+  "ended": "2026-11-11T04:17:04.814Z",
+  "loadavgEnd": [
+   9.9326171875,
+   11.83544921875,
+   12.5029296875
+  ]
+ },
+ "cells": {
+  "S|vz": {
+   "cold": {
+    "requests": [
+     13,
+     13,
+     13
+    ],
+    "bytes": [
+     83109,
+     83109,
+     83109
+    ],
+    "vue": [
+     7,
+     7,
+     7
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     6,
+     6,
+     6
+    ],
+    "readyMsRtt150": [
+     947,
+     952,
+     951
+    ],
+    "readyMsUnthrottled": [
+     39,
+     40,
+     41
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     13,
+     13,
+     13
+    ],
+    "bytes": [
+     441,
+     464,
+     441
+    ],
+    "vue": [
+     7,
+     7,
+     7
+    ],
+    "reval304": [
+     13,
+     13,
+     13
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     6,
+     6,
+     6
+    ],
+    "readyMsRtt150": [
+     943,
+     942,
+     939
+    ],
+    "readyMsUnthrottled": [
+     36,
+     42,
+     42
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   }
+  },
+  "S|vz-manifest": {
+   "cold": {
+    "requests": [
+     12,
+     12,
+     12
+    ],
+    "bytes": [
+     83490,
+     83467,
+     83467
+    ],
+    "vue": [
+     7,
+     7,
+     7
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     4,
+     4,
+     4
+    ],
+    "readyMsRtt150": [
+     644,
+     643,
+     643
+    ],
+    "readyMsUnthrottled": [
+     39,
+     36,
+     38
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/vz-manifest.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     5,
+     5,
+     5
+    ],
+    "bytes": [
+     168,
+     191,
+     191
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     5,
+     5,
+     5
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     3,
+     3,
+     3
+    ],
+    "readyMsRtt150": [
+     482,
+     489,
+     488
+    ],
+    "readyMsUnthrottled": [
+     32,
+     33,
+     32
+    ],
+    "paths": [
+     "/",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/vz-manifest.json"
+    ]
+   }
+  },
+  "S|vz-immutable": {
+   "cold": {
+    "requests": [
+     13,
+     13,
+     13
+    ],
+    "bytes": [
+     83110,
+     83110,
+     83110
+    ],
+    "vue": [
+     7,
+     7,
+     7
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     6,
+     6,
+     6
+    ],
+    "readyMsRtt150": [
+     946,
+     949,
+     949
+    ],
+    "readyMsUnthrottled": [
+     44,
+     40,
+     46
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     0,
+     0,
+     0
+    ],
+    "bytes": [
+     0,
+     0,
+     0
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     0,
+     0,
+     0
+    ],
+    "readyMsRtt150": [
+     32,
+     34,
+     49
+    ],
+    "readyMsUnthrottled": [
+     34,
+     34,
+     34
+    ],
+    "paths": []
+   }
+  },
+  "S|nuxt": {
+   "cold": {
+    "requests": [
+     23,
+     23,
+     23
+    ],
+    "bytes": [
+     80568,
+     80568,
+     80568
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     3,
+     3,
+     3
+    ],
+    "readyMsRtt150": [
+     488,
+     488,
+     488
+    ],
+    "readyMsUnthrottled": [
+     40,
+     34,
+     35
+    ],
+    "paths": [
+     "/",
+     "/_nuxt/1nZW2VY7.js",
+     "/_nuxt/8qFaTOD9.js",
+     "/_nuxt/BrHMW_kz.js",
+     "/_nuxt/CG4qTIBx.js",
+     "/_nuxt/CS1NjmyR.js",
+     "/_nuxt/Comp000.DQLxNl4x.css",
+     "/_nuxt/Comp001.S-bxm08K.css",
+     "/_nuxt/Comp002.CpM0696c.css",
+     "/_nuxt/Comp004.Brwr--RX.css",
+     "/_nuxt/Comp005.jD47uznY.css",
+     "/_nuxt/D2Zqtm2S.js",
+     "/_nuxt/D6WBHsNA.js",
+     "/_nuxt/DV5gGkMi.js",
+     "/_nuxt/DgA7Iut1.js",
+     "/_nuxt/Du_kcXMU.js",
+     "/_nuxt/default.i0wQsklx.css",
+     "/_nuxt/error-404.D1s5iiVL.css",
+     "/_nuxt/error-500.Y8MKPULp.css",
+     "/_nuxt/i5sNrC-1.js",
+     "/_nuxt/pages.CM9Ds-L7.css",
+     "/_nuxt/s6Hh-gzC.js",
+     "/_nuxt/yOs4NpFg.js"
+    ]
+   },
+   "warm": {
+    "requests": [
+     1,
+     1,
+     1
+    ],
+    "bytes": [
+     57,
+     57,
+     34
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     1,
+     1,
+     1
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     1,
+     1,
+     1
+    ],
+    "readyMsRtt150": [
+     184,
+     184,
+     179
+    ],
+    "readyMsUnthrottled": [
+     28,
+     26,
+     29
+    ],
+    "paths": [
+     "/"
+    ]
+   }
+  },
+  "M|vz": {
+   "cold": {
+    "requests": [
+     15,
+     15,
+     15
+    ],
+    "bytes": [
+     84218,
+     84218,
+     84218
+    ],
+    "vue": [
+     9,
+     9,
+     9
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     7,
+     7,
+     7
+    ],
+    "readyMsRtt150": [
+     1097,
+     1100,
+     1098
+    ],
+    "readyMsUnthrottled": [
+     41,
+     38,
+     45
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp003.vue",
+     "/components/Comp043.vue",
+     "/components/Comp071.vue",
+     "/components/Comp074.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     15,
+     15,
+     15
+    ],
+    "bytes": [
+     532,
+     509,
+     509
+    ],
+    "vue": [
+     9,
+     9,
+     9
+    ],
+    "reval304": [
+     15,
+     15,
+     15
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     7,
+     7,
+     7
+    ],
+    "readyMsRtt150": [
+     1101,
+     1106,
+     1089
+    ],
+    "readyMsUnthrottled": [
+     39,
+     38,
+     37
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp003.vue",
+     "/components/Comp043.vue",
+     "/components/Comp071.vue",
+     "/components/Comp074.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   }
+  },
+  "M|vz-manifest": {
+   "cold": {
+    "requests": [
+     14,
+     14,
+     14
+    ],
+    "bytes": [
+     86144,
+     86144,
+     86144
+    ],
+    "vue": [
+     9,
+     9,
+     9
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     4,
+     4,
+     4
+    ],
+    "readyMsRtt150": [
+     641,
+     641,
+     642
+    ],
+    "readyMsUnthrottled": [
+     38,
+     38,
+     41
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp003.vue",
+     "/components/Comp043.vue",
+     "/components/Comp071.vue",
+     "/components/Comp074.vue",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/vz-manifest.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     5,
+     5,
+     5
+    ],
+    "bytes": [
+     169,
+     192,
+     192
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     5,
+     5,
+     5
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     3,
+     3,
+     3
+    ],
+    "readyMsRtt150": [
+     486,
+     484,
+     484
+    ],
+    "readyMsUnthrottled": [
+     32,
+     34,
+     34
+    ],
+    "paths": [
+     "/",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/vz-manifest.json"
+    ]
+   }
+  },
+  "M|vz-immutable": {
+   "cold": {
+    "requests": [
+     15,
+     15,
+     15
+    ],
+    "bytes": [
+     84219,
+     84219,
+     84219
+    ],
+    "vue": [
+     9,
+     9,
+     9
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     7,
+     7,
+     7
+    ],
+    "readyMsRtt150": [
+     1093,
+     1099,
+     1101
+    ],
+    "readyMsUnthrottled": [
+     45,
+     37,
+     37
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp001.vue",
+     "/components/Comp002.vue",
+     "/components/Comp003.vue",
+     "/components/Comp043.vue",
+     "/components/Comp071.vue",
+     "/components/Comp074.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     0,
+     0,
+     0
+    ],
+    "bytes": [
+     0,
+     0,
+     0
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     0,
+     0,
+     0
+    ],
+    "readyMsRtt150": [
+     33,
+     34,
+     32
+    ],
+    "readyMsUnthrottled": [
+     31,
+     34,
+     32
+    ],
+    "paths": []
+   }
+  },
+  "M|nuxt": {
+   "cold": {
+    "requests": [
+     25,
+     25,
+     25
+    ],
+    "bytes": [
+     84415,
+     84415,
+     84415
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     3,
+     3,
+     3
+    ],
+    "readyMsRtt150": [
+     487,
+     480,
+     482
+    ],
+    "readyMsUnthrottled": [
+     37,
+     35,
+     34
+    ],
+    "paths": [
+     "/",
+     "/_nuxt/7HkiZa9K.js",
+     "/_nuxt/BJ_YWSKL.js",
+     "/_nuxt/BOCh6e5K.js",
+     "/_nuxt/BrHMW_kz.js",
+     "/_nuxt/CBwLQHO8.js",
+     "/_nuxt/CG4qTIBx.js",
+     "/_nuxt/CS1NjmyR.js",
+     "/_nuxt/CnsW4130.js",
+     "/_nuxt/Comp000.Bcw6KhIn.css",
+     "/_nuxt/Comp002.CkxKAsp3.css",
+     "/_nuxt/Comp003.DlyFEjyW.css",
+     "/_nuxt/Comp043.V8fLndhG.css",
+     "/_nuxt/Comp071.CCXl2ZjW.css",
+     "/_nuxt/Comp074.B5fqa5eC.css",
+     "/_nuxt/DRJGRJod.js",
+     "/_nuxt/DV5gGkMi.js",
+     "/_nuxt/DgA7Iut1.js",
+     "/_nuxt/DxBTALsv.js",
+     "/_nuxt/default.i0wQsklx.css",
+     "/_nuxt/ehDl_HNl.js",
+     "/_nuxt/error-404.D1s5iiVL.css",
+     "/_nuxt/error-500.Y8MKPULp.css",
+     "/_nuxt/pages.j8EdnhYK.css",
+     "/_nuxt/yOs4NpFg.js"
+    ]
+   },
+   "warm": {
+    "requests": [
+     1,
+     1,
+     1
+    ],
+    "bytes": [
+     57,
+     34,
+     57
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     1,
+     1,
+     1
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     1,
+     1,
+     1
+    ],
+    "readyMsRtt150": [
+     178,
+     176,
+     176
+    ],
+    "readyMsUnthrottled": [
+     26,
+     27,
+     26
+    ],
+    "paths": [
+     "/"
+    ]
+   }
+  },
+  "L|vz": {
+   "cold": {
+    "requests": [
+     17,
+     17,
+     17
+    ],
+    "bytes": [
+     85417,
+     85417,
+     85417
+    ],
+    "vue": [
+     11,
+     11,
+     11
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     7,
+     7,
+     7
+    ],
+    "readyMsRtt150": [
+     1098,
+     1114,
+     1104
+    ],
+    "readyMsUnthrottled": [
+     40,
+     39,
+     40
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp003.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/components/Comp006.vue",
+     "/components/Comp007.vue",
+     "/components/Comp014.vue",
+     "/components/Comp157.vue",
+     "/components/Comp193.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     17,
+     17,
+     17
+    ],
+    "bytes": [
+     600,
+     600,
+     600
+    ],
+    "vue": [
+     11,
+     11,
+     11
+    ],
+    "reval304": [
+     17,
+     17,
+     17
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     7,
+     7,
+     7
+    ],
+    "readyMsRtt150": [
+     1092,
+     1102,
+     1093
+    ],
+    "readyMsUnthrottled": [
+     41,
+     38,
+     38
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp003.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/components/Comp006.vue",
+     "/components/Comp007.vue",
+     "/components/Comp014.vue",
+     "/components/Comp157.vue",
+     "/components/Comp193.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   }
+  },
+  "L|vz-manifest": {
+   "cold": {
+    "requests": [
+     16,
+     16,
+     16
+    ],
+    "bytes": [
+     91156,
+     91156,
+     91156
+    ],
+    "vue": [
+     11,
+     11,
+     11
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     4,
+     4,
+     4
+    ],
+    "readyMsRtt150": [
+     641,
+     646,
+     639
+    ],
+    "readyMsUnthrottled": [
+     41,
+     39,
+     37
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp003.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/components/Comp006.vue",
+     "/components/Comp007.vue",
+     "/components/Comp014.vue",
+     "/components/Comp157.vue",
+     "/components/Comp193.vue",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/vz-manifest.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     5,
+     5,
+     5
+    ],
+    "bytes": [
+     193,
+     170,
+     193
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     5,
+     5,
+     5
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     3,
+     3,
+     3
+    ],
+    "readyMsRtt150": [
+     484,
+     481,
+     485
+    ],
+    "readyMsUnthrottled": [
+     34,
+     33,
+     34
+    ],
+    "paths": [
+     "/",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/vz-manifest.json"
+    ]
+   }
+  },
+  "L|vz-immutable": {
+   "cold": {
+    "requests": [
+     17,
+     17,
+     17
+    ],
+    "bytes": [
+     85418,
+     85418,
+     85418
+    ],
+    "vue": [
+     11,
+     11,
+     11
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     7,
+     7,
+     7
+    ],
+    "readyMsRtt150": [
+     1093,
+     1098,
+     1099
+    ],
+    "readyMsUnthrottled": [
+     41,
+     39,
+     39
+    ],
+    "paths": [
+     "/",
+     "/components/Comp000.vue",
+     "/components/Comp003.vue",
+     "/components/Comp004.vue",
+     "/components/Comp005.vue",
+     "/components/Comp006.vue",
+     "/components/Comp007.vue",
+     "/components/Comp014.vue",
+     "/components/Comp157.vue",
+     "/components/Comp193.vue",
+     "/components/components.json",
+     "/layouts/default.vue",
+     "/lib/vue-router.js",
+     "/lib/vue-zero.js",
+     "/lib/vue.js",
+     "/pages/index.vue",
+     "/pages/pages.json"
+    ]
+   },
+   "warm": {
+    "requests": [
+     0,
+     0,
+     0
+    ],
+    "bytes": [
+     0,
+     0,
+     0
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     0,
+     0,
+     0
+    ],
+    "readyMsRtt150": [
+     36,
+     34,
+     35
+    ],
+    "readyMsUnthrottled": [
+     35,
+     35,
+     33
+    ],
+    "paths": []
+   }
+  },
+  "L|nuxt": {
+   "cold": {
+    "requests": [
+     25,
+     25,
+     25
+    ],
+    "bytes": [
+     91816,
+     91816,
+     91816
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     0,
+     0,
+     0
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     3,
+     3,
+     3
+    ],
+    "readyMsRtt150": [
+     481,
+     484,
+     482
+    ],
+    "readyMsUnthrottled": [
+     33,
+     36,
+     33
+    ],
+    "paths": [
+     "/",
+     "/_nuxt/70JqrEif.js",
+     "/_nuxt/BiWAWThD.js",
+     "/_nuxt/BjInjDF2.js",
+     "/_nuxt/BpDeKGIt.js",
+     "/_nuxt/BrHMW_kz.js",
+     "/_nuxt/CG4qTIBx.js",
+     "/_nuxt/CS1NjmyR.js",
+     "/_nuxt/Comp003.BD6tXelw.css",
+     "/_nuxt/Comp006.lQsmk9lp.css",
+     "/_nuxt/Comp007.CcSRavZL.css",
+     "/_nuxt/Comp014.1H81Ru4o.css",
+     "/_nuxt/Comp157.D0qwtYZD.css",
+     "/_nuxt/Comp193.BjOpvgBL.css",
+     "/_nuxt/D2E1yrxI.js",
+     "/_nuxt/DOAb8sVM.js",
+     "/_nuxt/DV5gGkMi.js",
+     "/_nuxt/Ddcitfq0.js",
+     "/_nuxt/DgA7Iut1.js",
+     "/_nuxt/default.i0wQsklx.css",
+     "/_nuxt/error-404.D1s5iiVL.css",
+     "/_nuxt/error-500.Y8MKPULp.css",
+     "/_nuxt/pages.DZSR42Ba.css",
+     "/_nuxt/ssKOM-Ny.js",
+     "/_nuxt/yOs4NpFg.js"
+    ]
+   },
+   "warm": {
+    "requests": [
+     1,
+     1,
+     1
+    ],
+    "bytes": [
+     35,
+     58,
+     58
+    ],
+    "vue": [
+     0,
+     0,
+     0
+    ],
+    "reval304": [
+     1,
+     1,
+     1
+    ],
+    "notFound": [
+     0,
+     0,
+     0
+    ],
+    "duplicates": [
+     0,
+     0,
+     0
+    ],
+    "waves": [
+     1,
+     1,
+     1
+    ],
+    "readyMsRtt150": [
+     179,
+     178,
+     179
+    ],
+    "readyMsUnthrottled": [
+     28,
+     26,
+     28
+    ],
+    "paths": [
+     "/"
+    ]
+   }
+  }
+ }
+}

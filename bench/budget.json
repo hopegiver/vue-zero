@@ -1,35 +1,47 @@
 {
- "_comment": "하드 게이트 = 측정값 +15%, 소프트(경고) 시간 = 측정값 x2. --write-baseline 으로 재생성(규모 M, 로컬 무제한 프로필).",
+ "_comment": "하드 게이트: 바이트·크기·이동 요청 = 측정값 +15%, 콜드/웜 요청 수·manifest* 요청 수 = 측정값 그대로(결정적 정수), 웨이브(타이밍 추론) = 측정값 +1, 소프트(경고) 시간 = 측정값 x2. --write-baseline 으로 재생성(규모 M, 로컬 무제한 프로필). 근거: bench/RESULTS.md 9절.",
  "size": "M",
  "baseline": {
-  "coldRequests": 17,
-  "coldBytes": 83286,
-  "warmRequests": 17,
+  "coldRequests": 15,
+  "coldBytes": 84218,
+  "warmRequests": 15,
   "navComponentRequests": 50,
-  "vzBrotliBytes": 6801,
-  "vzRawBytes": 17126,
-  "libsBrotliBytes": 77240,
-  "coldReadyMs": 40,
-  "navFirstMs": 39
+  "vzBrotliBytes": 7767,
+  "vzRawBytes": 19668,
+  "libsBrotliBytes": 78206,
+  "manifestColdRequests": 14,
+  "manifestBootRequests": 5,
+  "manifestWarmRequests": 5,
+  "manifestColdWaves": 4,
+  "manifestWarmWaves": 3,
+  "coldReadyMs": 46,
+  "navFirstMs": 48
  },
  "hard": {
-  "coldRequests": 20,
-  "coldBytes": 95779,
-  "warmRequests": 20,
+  "coldRequests": 15,
+  "coldBytes": 96851,
+  "warmRequests": 15,
   "navComponentRequests": 58,
-  "vzBrotliBytes": 7822,
-  "vzRawBytes": 19695,
-  "libsBrotliBytes": 88826
+  "vzBrotliBytes": 8933,
+  "vzRawBytes": 22619,
+  "libsBrotliBytes": 89937,
+  "manifestColdRequests": 14,
+  "manifestBootRequests": 5,
+  "manifestWarmRequests": 5,
+  "manifestColdWaves": 5,
+  "manifestWarmWaves": 4
  },
  "exact": {
   "unexpectedInitialComponents": 0,
   "missingInitialComponents": 0,
   "unexpectedNavComponents": 0,
   "duplicateRequests": 0,
-  "navComponentRequestsEqualsUnion": true
+  "navComponentRequestsEqualsUnion": true,
+  "manifestWarmVueRequests": 0,
+  "manifestDuplicateRequests": 0
  },
  "soft": {
-  "coldReadyMs": 80,
-  "navFirstMs": 78
+  "coldReadyMs": 92,
+  "navFirstMs": 96
  }
 }

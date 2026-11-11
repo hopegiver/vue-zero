@@ -1,7 +1,8 @@
-// 벤치 러너: 변형(vz / vz-immutable / nuxt) × 규모(S/M/L) × 네트워크·CPU 프로필(1/2/3) × 반복.
+// 벤치 러너: 변형(vz / vz-manifest / vz-immutable / nuxt) × 규모(S/M/L) × 네트워크·CPU 프로필(1/2/3) × 반복.
 // 세션 1회 = 새 컨텍스트(콜드) → 콜드 로드 → SPA 이동(첫/재방문/20연속) → 메모리 → 같은 컨텍스트 새 탭으로 웜 로드.
 // 변형 순서는 반복마다 회전(인터리브)해 시간대 소음 편향을 줄인다.
 // 사용: node bench/run.mjs --out results/raw-main.jsonl [--sizes S,M,L] [--profiles 1,2,3] [--reps 7] [--variants vz,vz-immutable,nuxt] [--h1]
+// vz-manifest = createApp({manifest:true}) + Cache Storage 영속 캐시. prod 호스트(vzm.bench.test)로 접속해야 캐시가 켜진다(127.0.0.1 은 dev 판별). --h1(평문 http)에서는 비보안 컨텍스트라 caches 가 없어 폴백된다.
 import { chromium } from '@playwright/test'
 import { spawn, execFileSync } from 'node:child_process'
 import { readdirSync, statSync, readFileSync, appendFileSync, mkdirSync, existsSync, writeFileSync } from 'node:fs'
@@ -11,6 +12,7 @@ import { loadavg } from 'node:os'
 import https from 'node:https'
 import http from 'node:http'
 import net from 'node:net'
+import { originFor, HOST_RULES } from './probe.mjs'
 
 const bench = dirname(fileURLToPath(import.meta.url))
 const argv = process.argv.slice(2)
@@ -69,7 +71,7 @@ function get(origin, path) {
 
 function variantSpec(v, size) {
   const root = v === 'nuxt' ? resolve(bench, 'build', `nuxt-${size}`) : resolve(bench, 'apps', size, 'vz')
-  const indexFile = v === 'vz-hintsA' ? 'index.hintsA.html' : v.startsWith('vz-hintsB') ? 'index.hintsB.html' : null
+  const indexFile = v === 'vz-manifest' ? 'index.manifest.html' : v === 'vz-hintsA' ? 'index.hintsA.html' : v.startsWith('vz-hintsB') ? 'index.hintsB.html' : null
   return { root, kind: v === 'nuxt' ? 'nuxt' : 'vz', mode: v === 'vz-immutable' || v === 'vz-hintsB-imm' ? 'immutable' : 'cf', indexFile }
 }
 
@@ -93,13 +95,13 @@ async function instrument(ctx, profile) {
   page.on('pageerror', (e) => pageErrors.push(String(e).slice(0, 200)))
   page.on('console', (m) => { if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) pageErrors.push('console: ' + m.text().slice(0, 200)) })
   const snap = () => {
-    let requests = 0, bytes = 0, n304 = 0, cached = 0, h2 = 0
+    let requests = 0, bytes = 0, n304 = 0, cached = 0, h2 = 0, vue = 0
     for (const r of st.reqs.values()) {
       if (r.mem || r.disk) { cached++; continue }
       if (!r.done && r.status !== 404) continue
-      requests++; bytes += r.done ? (r.bytes || 0) : (r.hdr || 0); if (r.raw === 304 || r.status === 304) n304++; if (r.proto === 'h2') h2++
+      requests++; if (/\.vue(\?|$)/.test(r.url.split('#')[0])) vue++; bytes += r.done ? (r.bytes || 0) : (r.hdr || 0); if (r.raw === 304 || r.status === 304) n304++; if (r.proto === 'h2') h2++
     }
-    return { requests, bytes, n304, cached, h2 }
+    return { requests, bytes, n304, cached, h2, vue }
   }
   const pend = () => { let n = 0; for (const r of st.reqs.values()) if (!r.done && r.status !== 404) n++; return n }
   const settle = async (quiet = 400, cap = 20000) => { const t0 = Date.now(); while (Date.now() - t0 < cap) { if (pend() === 0 && Date.now() - st.lastActivity >= quiet) return true; await sleep(50) } return false }
@@ -194,15 +196,16 @@ async function main() {
       const a = ['server.mjs', '--root', sp.root, '--port', String(p), '--kind', sp.kind, '--mode', sp.mode]; if (sp.indexFile) a.push('--index-file', sp.indexFile)
       if (h1) a.push('--h1')
       servers.push(spawn('node', a, { cwd: bench, stdio: 'ignore' }))
-      origins[v + ':' + size] = `${h1 ? 'http' : 'https'}://127.0.0.1:${p}`
+      origins[v + ':' + size] = h1 ? `http://127.0.0.1:${p}` : originFor(v, p)
+      const warmOrigin = `${h1 ? 'http' : 'https'}://127.0.0.1:${p}` // 예열은 Node 에서 하므로 가짜 호스트 대신 루프백
       await waitPort(p)
       // 압축 캐시 예열(서버 첫 요청 압축 비용이 측정에 섞이지 않게)
       const files = walk(sp.root).map((f) => '/' + f.split('\\').join('/'))
       if (sp.kind === 'vz') files.push('/lib/vue.js', '/lib/vue-router.js', '/lib/vue-zero.js')
-      for (let i = 0; i < files.length; i += 16) await Promise.all(files.slice(i, i + 16).map((f) => get(origins[v + ':' + size], f)))
+      for (let i = 0; i < files.length; i += 16) await Promise.all(files.slice(i, i + 16).map((f) => get(warmOrigin, f)))
     }
   }
-  const browser = await chromium.launch({ headless: true, args: h1 ? [] : [`--ignore-certificate-errors-spki-list=${spki}`] })
+  const browser = await chromium.launch({ headless: true, args: h1 ? [] : [`--ignore-certificate-errors-spki-list=${spki}`, HOST_RULES] })
   const meta = { type: 'meta', started: new Date().toISOString(), chromium: browser.version(), h1, sizes, profiles: profileIds, reps, variants: variantNames, loadavgStart: loadavg() }
   appendFileSync(out, JSON.stringify(meta) + '\n')
   const t0 = Date.now(); let n = 0; const total = reps * sizes.length * profileIds.length * variantNames.length

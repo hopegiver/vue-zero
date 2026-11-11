@@ -4,6 +4,7 @@
 import { mkdirSync, writeFileSync, rmSync, cpSync, readFileSync } from 'node:fs'
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { generate as generateManifest } from '../../test/scripts/gen-manifest.mjs'
 
 // X60/X150: 보조 스트레스(홈 페이지 하나가 컴포넌트 60/150개를 직접 사용, 동적 라우트 없음) — 페이지당 컴포넌트 수가 늘 때의 비용 측정용
 export const SIZES = { S: { pages: 10, comps: 10 }, M: { pages: 50, comps: 100 }, L: { pages: 150, comps: 300 }, X60: { pages: 3, comps: 60, home: 60, dyn: 0 }, X150: { pages: 3, comps: 150, home: 150, dyn: 0 } }
@@ -225,6 +226,10 @@ export function generate(size, outRoot = resolve(benchRoot, 'apps')) {
 </body>
 </html>
 `)
+  // 변형 vz-manifest: 매니페스트(+영속 캐시) on 인 index 와 vz-manifest.json. 매니페스트는 테스트 전용 생성기(명세 구현)로 만든다.
+  // pages.json/components.json 은 위에서 이미 썼으므로 건드리지 않고 vz-manifest.json 만 쓴다(vz 변형은 이 파일을 요청하지 않는다).
+  writeFileSync(resolve(vz, 'vz-manifest.json'), generateManifest(vz).manifest)
+  writeFileSync(resolve(vz, 'index.manifest.html'), readFileSync(resolve(vz, 'index.html'), 'utf8').replace('VueZero.createApp()', 'VueZero.createApp({ manifest: true })'))
   // 보조 변형용 index.html: 앱 측 <link rel=preload> 힌트(라이브러리 변경 없음). A=매니페스트+레이아웃+홈 페이지, B=A+홈이 쓰는 컴포넌트 전체(중첩 포함)
   const homeTree = [...new Set(pageComps.index.flatMap((c) => [...treeOf(c)]))]
   const link = (u) => `  <link rel="preload" as="fetch" href="${u}" crossorigin>\n`
