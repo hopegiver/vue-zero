@@ -1,0 +1,35 @@
+{
+ "_comment": "하드 게이트 = 측정값 +15%, 소프트(경고) 시간 = 측정값 x2. --write-baseline 으로 재생성(규모 M, 로컬 무제한 프로필).",
+ "size": "M",
+ "baseline": {
+  "coldRequests": 17,
+  "coldBytes": 80988,
+  "warmRequests": 17,
+  "navComponentRequests": 50,
+  "vzBrotliBytes": 4503,
+  "vzRawBytes": 11279,
+  "libsBrotliBytes": 74942,
+  "coldReadyMs": 42,
+  "navFirstMs": 43
+ },
+ "hard": {
+  "coldRequests": 20,
+  "coldBytes": 93137,
+  "warmRequests": 20,
+  "navComponentRequests": 58,
+  "vzBrotliBytes": 5179,
+  "vzRawBytes": 12971,
+  "libsBrotliBytes": 86184
+ },
+ "exact": {
+  "unexpectedInitialComponents": 0,
+  "missingInitialComponents": 0,
+  "unexpectedNavComponents": 0,
+  "duplicateRequests": 0,
+  "navComponentRequestsEqualsUnion": true
+ },
+ "soft": {
+  "coldReadyMs": 84,
+  "navFirstMs": 86
+ }
+}

@@ -43,3 +43,17 @@ pnpm bench:budget                                     # 예산 게이트 (Phase 
 
 `.github/workflows/ci.yml` 에 잡을 추가하는 안: `pnpm install` → `pnpm build` → `pnpm exec playwright install chromium` → `pnpm bench:budget`.
 하드 게이트는 요청 수·바이트·중복 여부 같은 결정적 지표이므로 러너 성능과 무관하게 안정적이다. 시간 지표는 경고만 출력한다.
+
+## 예산 게이트 (`pnpm bench:budget`)
+
+규모 M vz 앱을 로컬(무제한 프로필, HTTP/2)로 띄워 **결정적 지표**만 하드 게이트로 검사한다. 성공은 1줄, 실패는 위반 항목만 출력하고 exit 1. 소요 약 10초.
+
+| 구분 | 항목 |
+|---|---|
+| 하드(현재값 +15%, `budget.json` `hard`) | 홈 콜드 요청 수·전송 바이트(brotli), 웜 재검증 요청 수, 연속 이동 10회의 컴포넌트 요청 수, vue-zero.js 크기(raw/brotli), 라이브러리 3종 brotli 합 |
+| 하드(정확 일치, 코드에 고정) | 초기 로드에서 홈이 쓰지 않는 컴포넌트 요청 0, 홈 컴포넌트 트리 누락 0, 이동 중 방문 페이지 외 컴포넌트 요청 0, 컴포넌트 요청 수 = 방문 페이지 컴포넌트 합집합(중복 0), 같은 URL 중복 네트워크 요청 0 |
+| 소프트(경고만, 현재값 x2) | 콜드 ready ms, 첫 이동 ms (머신·소음 의존) |
+
+- 임계값 재생성: `node bench/budget.mjs --write-baseline` (변경 사유를 커밋 메시지에). 환경변수: `BENCH_BUDGET_FILE`(다른 임계값 파일), `VUEZERO_DIST`(다른 dist 로 검증), `BENCH_BUDGET_PORT`.
+- 검증력 확인(변이): v1.2.1(지연 로딩 이전) dist 로 실행하면 7개 위반으로 실패한다 — `git show 406f99b:dist/vue-zero.js > /tmp/x.js && VUEZERO_DIST=/tmp/x.js node bench/budget.mjs`.
+- pnpm 이 스크립트 실행 줄(`$ node bench/budget.mjs`)을 한 줄 더 찍는다. 출력을 1줄로 받으려면 `node bench/budget.mjs`를 직접 실행.

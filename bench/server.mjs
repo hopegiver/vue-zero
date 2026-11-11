@@ -22,7 +22,7 @@ const root = resolve(args.root), port = Number(args.port), kind = args.kind || '
 const libs = {
   '/lib/vue.js': join(pkgRoot, 'node_modules/vue/dist/vue.global.prod.js'),
   '/lib/vue-router.js': join(pkgRoot, 'node_modules/vue-router/dist/vue-router.global.prod.js'),
-  '/lib/vue-zero.js': join(pkgRoot, 'dist/vue-zero.js'),
+  '/lib/vue-zero.js': process.env.VUEZERO_DIST ? resolve(process.env.VUEZERO_DIST) : join(pkgRoot, 'dist/vue-zero.js'),
 }
 const MIME = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.vue': 'text/plain; charset=utf-8', '.css': 'text/css; charset=utf-8', '.txt': 'text/plain; charset=utf-8', '.svg': 'image/svg+xml', '.ico': 'image/x-icon' }
 const TEXT = new Set(['.html', '.js', '.mjs', '.json', '.vue', '.css', '.txt', '.svg'])

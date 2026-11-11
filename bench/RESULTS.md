@@ -195,4 +195,4 @@ HTTP/2 대신 평문 HTTP/1.1(연결 6개 제한)로 서빙. P2 콜드: vz 408.9
 
 ## 8. 재현·CI 연결 제안
 - 재현: `bench/README.md`. 원시 데이터: `results/raw-*.jsonl`, 집계: `results/*.summary.json`, 자동 표: `results/*.tables.md`.
-- 예산 게이트: `pnpm bench:budget`(결정적 지표만 하드 게이트, 시간은 경고). **워크플로(.github/workflows/)는 수정하지 않았다.** 연결 제안: `ci.yml`에 `pnpm build` 이후 단계로 `pnpm exec playwright install chromium && pnpm bench:budget`을 추가(약 10초). 임계값 갱신은 `node bench/budget.mjs --write-baseline` 후 변경 사유를 커밋 메시지에 기록.
+- 예산 게이트: `pnpm bench:budget`(결정적 지표만 하드 게이트, 시간은 경고). **워크플로(.github/workflows/)는 수정하지 않았다.** 연결 제안: `ci.yml`에 `pnpm build` 이후 단계로 `pnpm exec playwright install chromium && pnpm bench:budget`을 추가(약 10초). 임계값 갱신은 `node bench/budget.mjs --write-baseline` 후 변경 사유를 커밋 메시지에 기록. 현재 M 기준 기준선: 홈 콜드 요청 17(한도 20)·80,988 B(한도 93,137)·웜 재검증 17(한도 20)·연속 이동 컴포넌트 요청 50(= 방문 페이지 합집합 50)·라이브러리 brotli 74,942 B (`bench/budget.json`). 검증력 확인: v1.2.1(지연 로딩 이전) dist 로 실행하면 7개 위반(콜드 요청 110 등)으로 실패, 임계값을 조이면 해당 항목만 출력하고 exit 1(직접 실행해 확인).
