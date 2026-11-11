@@ -1,5 +1,6 @@
 import { parseSfc } from './SfcParser'
 import { reportCaught } from './Diagnostics'
+import { shared, type Inflight } from './Inflight'
 
 declare const Vue: typeof import('vue')
 
@@ -16,7 +17,7 @@ declare const Vue: typeof import('vue')
 export class ComponentLoader {
   private componentsDir: string
   private cache = new Map<string, Record<string, unknown>>()
-  private inflight = new Map<string, Promise<Record<string, unknown>>>()
+  private inflight: Inflight<Record<string, unknown>> = new Map()
   // 태그 정규화 키(소문자, 하이픈 제거) → 등록된 컴포넌트 이름
   private lookup = new Map<string, string>()
 
@@ -56,11 +57,11 @@ export class ComponentLoader {
     await Promise.allSettled(this.findUsed(template).map(name => this.preloadDeep(name, seen)))
   }
 
-  /** 매니페스트 deps 힌트: 이름 목록을 동시에 요청 시작한다(실패는 fetchOne 이 보고, 이동은 막지 않는다) */
+  /** 매니페스트 deps 힌트: 이름 목록을 동시에 요청 시작한다. 힌트가 시작한 요청의 실패는 보고하지 않는다(실제로 필요하면 정규 경로가 다시 받아 보고한다) */
   prefetch(names: string[]): void {
     for (const n of names) {
       const name = this.lookup.get(String(n).replace(/-/g, '').toLowerCase())
-      if (name) this.load(name).catch(() => {})
+      if (name && !this.cache.has(name)) shared(this.inflight, name, q => this.fetchOne(name, q), true).catch(() => {})
     }
   }
 
@@ -87,15 +88,10 @@ export class ComponentLoader {
   private load(name: string): Promise<Record<string, unknown>> {
     const cached = this.cache.get(name)
     if (cached) return Promise.resolve(cached)
-    let pending = this.inflight.get(name)
-    if (!pending) {
-      pending = this.fetchOne(name).finally(() => this.inflight.delete(name))
-      this.inflight.set(name, pending)
-    }
-    return pending
+    return shared(this.inflight, name, q => this.fetchOne(name, q))
   }
 
-  private async fetchOne(name: string): Promise<Record<string, unknown>> {
+  private async fetchOne(name: string, quiet: boolean): Promise<Record<string, unknown>> {
     const url = `${this.componentsDir}/${name}.vue`
     try {
       const { template, componentOptions } = await parseSfc(url, `component-${name}`)
@@ -103,7 +99,7 @@ export class ComponentLoader {
       this.cache.set(name, component)
       return component
     } catch (e) {
-      reportCaught(e, { code: 'E_COMPONENT_LOAD', stage: 'load', file: url, message: `component "${name}" load failed`, hint: `check ${url}` })
+      if (!quiet) reportCaught(e, { code: 'E_COMPONENT_LOAD', stage: 'load', file: url, message: `component "${name}" load failed`, hint: `check ${url}` })
       throw e
     }
   }

@@ -14,8 +14,9 @@
 
 ### 추가
 - **`createApp({ manifest: true | '<경로>' })`(기본 off).** scan 이 만든 `vz-manifest.json` 한 개(항상 재검증, `cache: 'no-cache'`)로 `pages.json`·`components.json` 요청을 대신합니다. 매니페스트가 없거나 깨졌거나 `v` 가 1이 아니면 `E_MANIFEST_FETCH` 경고 후 `pages.json`/`components.json` 으로 자동 폴백합니다. 형식 명세: `docs/architecture/manifest-format.md`, README "Manifest (vz-manifest.json)".
-- **Cache Storage 영속 캐시**(매니페스트 on + 운영 호스트). `files` 해시가 있는 `.vue` 를 캐시 `vue-zero-<버전>` 에 `<경로>?v=<해시>` 키로 저장·조회합니다. 적중하면 네트워크 요청이 없고, 해시가 바뀐 파일만 다시 받습니다. 마운트 뒤 유휴 시간에 현재 매니페스트에 없는 옛 항목과 다른 버전의 `vue-zero-*` 캐시를 지웁니다. 서버의 `_headers`/캐시 설정은 필요 없습니다. `localhost`/`127.0.0.1`/`[::1]`/`?vzdev` 에서는 쓰지 않습니다. `caches` 미지원·예외·쿼터 초과는 조용히 일반 fetch 로 폴백합니다.
+- **Cache Storage 영속 캐시**(매니페스트 on + 운영 호스트). `files` 해시가 있는 `.vue` 를 캐시 `vue-zero-<버전>` 에 `<경로>?v=<해시>` 키로 저장·조회합니다. 적중하면 네트워크 요청이 없고, 해시가 바뀐 파일만 다시 받습니다. 마운트 뒤 유휴 시간에 현재 매니페스트에 없는 옛 항목과 다른 버전의 `vue-zero-*` 캐시를 지웁니다. 서버의 `_headers`/캐시 설정은 필요 없습니다. `localhost`/`127.0.0.1`/`[::1]`/`?vzdev` 에서는 쓰지 않습니다. `caches` 미지원·예외·쿼터 초과는 조용히 일반 fetch 로 폴백합니다. **저장 전에 본문 해시를 매니페스트 값과 대조**해(생성기와 같은 CRLF→LF 정규화·sha256 앞 10자) 일치하고 OK·비리다이렉트인 응답만 저장합니다. 불일치(배포 중 옛 파일)·SPA fallback 이 돌려준 HTML·리다이렉트·비정상 상태는 그 화면에만 쓰고 저장하지 않아 서버가 정상화되면 다음 방문에 회복됩니다.
 - **`deps` 병렬 선행 로드**(매니페스트 on). 이동 시작 시 페이지 `.vue`·레이아웃·의존 컴포넌트를 동시에 요청합니다. 인증이 켜져 있고 미인증이면 페이지 `.vue` 를 받아 `auth` 판단을 통과한 뒤에 시작하므로, 보호 페이지의 레이아웃·컴포넌트는 미인증 방문자에게 요청되지 않습니다(`deps` 는 힌트라 틀려도 동작은 같습니다).
+- 힌트(`deps`)가 시작한 선행 요청의 실패는 `VueZero.errors()`/콘솔에 남기지 않습니다(틀린 힌트가 거짓 `E_LAYOUT_NOT_FOUND` 를 만들지 않음). 실제로 필요하면 정규 경로가 그대로 보고합니다. 생성기의 layout 판정은 `export default {` 의 최상위 `layout:` 만 봅니다(`data()`·중첩 객체의 키는 무시). 원소가 문자열이 아닌 `pages`/`components` 는 `E_MANIFEST_FETCH` + legacy 폴백입니다.
 - 새 에러 코드 `E_MANIFEST_FETCH`(런타임 경고)와 `E_MANIFEST_STALE`(템플릿 doctor / `scan --check` 전용), `E_NOT_FOUND_PAGE`(아래).
 - `bench/`: `vz-manifest` 변형, `bench/compare.mjs`, 예산 게이트 확장(웜 요청 수·웜 `.vue` 0건·웨이브 수). 결과와 한계는 `bench/RESULTS.md` §9.
 
@@ -25,7 +26,7 @@
 ### 호환성 주의사항
 - **기본 동작은 그대로입니다.** `manifest` 를 켜지 않으면 `pages.json`/`components.json` 을 받고 영속 캐시·선행 로드를 쓰지 않습니다(테스트로 고정).
 - **404/error 동작 차이.** `pages/404.vue` 가 없을 때 알 수 없는 URL 은 이제 레이아웃 안의 빈 본문으로 렌더되고 `E_NOT_FOUND_PAGE` 경고가 1회 나옵니다(이전에는 catch-all 라우트가 없었습니다). `404.vue`/`error.vue` 는 파일이 있어도 첫 필요 시점까지 요청되지 않으므로, 서버 로그에서 부팅 때의 두 요청이 사라집니다. `error.vue` 가 없을 때 로드 실패는 조용히 넘어가고(`E_ERROR_PAGE` 없음) 없다는 사실은 캐시됩니다.
-- **dist 크기.** v1.4.0 17,146 B → 19,668 B(+2,522 B).
+- **dist 크기.** v1.4.0 17,146 B → 20,142 B(+2,996 B; 목표 +2.5KB 대비 약 +436 B 초과 — 저장 전 해시 검증과 힌트 요청의 조용한 실패 처리를 위해).
 - **`caches` 사용.** `manifest` 를 켜면 운영 호스트에서 Cache Storage 를 씁니다(HTTPS 등 보안 컨텍스트에서만; 아니면 일반 fetch). 같은 출처의 여러 앱이 서로 다른 라이브러리 버전을 쓰면 서로의 캐시를 지웁니다. Chromium 에서만 검증했습니다.
 - **dev 판별.** `localhost`/`127.0.0.1`/`[::1]` 또는 `?vzdev` 에서는 해시·영속 캐시를 쓰지 않습니다(편집 중 stale 방지; 템플릿 `index.html` 과 같은 규칙).
 - 매니페스트의 `has404`/`hasError`/`build` 필드는 라이브러리가 읽지 않습니다.

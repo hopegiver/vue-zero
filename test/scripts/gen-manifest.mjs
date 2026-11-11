@@ -39,10 +39,28 @@ function block(src, tag) {
 
 function layoutOf(script) {
   const code = script.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|\s)\/\/[^\n]*/g, '$1')
-  const keys = code.match(/\blayout\s*:/g) || []
-  if (keys.length === 0) return 'default'
-  if (keys.length > 1) return undefined
-  const m = /\blayout\s*:\s*(?:(false)|'([^'\\\n]*)'|"([^"\\\n]*)")\s*(?=[,}\r\n])/.exec(code)
+  const start = /\bexport\s+default\s*\{/.exec(code)
+  if (!start) return /\blayout\s*:/.test(code) ? undefined : 'default'
+  const keys = []
+  let depth = 0
+  let i = start.index + start[0].length - 1
+  for (; i < code.length; i++) {
+    const c = code[i]
+    if (c === "'" || c === '"' || c === '`') {
+      for (i++; i < code.length && code[i] !== c; i++) if (code[i] === '\\') i++
+    } else if ('{[('.includes(c)) depth++
+    else if ('}])'.includes(c)) { if (--depth === 0) break }
+    else if (depth === 1 && c === 'l' && !/[\w$.]/.test(code[i - 1])) {
+      const k = /layout\s*:/y
+      k.lastIndex = i
+      if (k.test(code)) keys.push(i)
+    }
+  }
+  if (i >= code.length || keys.length > 1) return undefined
+  if (!keys.length) return 'default'
+  const lit = /layout\s*:\s*(?:(false)|'([^'\\\n]*)'|"([^"\\\n]*)")\s*(?=[,}\r\n])/y
+  lit.lastIndex = keys[0]
+  const m = lit.exec(code)
   return m ? (m[1] ? false : m[2] ?? m[3]) : undefined
 }
 

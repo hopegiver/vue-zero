@@ -2,6 +2,7 @@ import { RouteScanner } from './core/RouteScanner'
 import { ComponentLoader } from './core/ComponentLoader'
 import { AuthGuard } from './core/AuthGuard'
 import { parseSfc, getStyleInjector, net } from './core/SfcParser'
+import { shared, type Inflight } from './core/Inflight'
 import { loadManifest, createPersistentCache, isDevHost } from './core/Manifest'
 import { report, reportCaught, errors as diagErrors, VzError } from './core/Diagnostics'
 
@@ -217,18 +218,13 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     return comp
   }
 
-  const layoutInflight = new Map<string, Promise<unknown>>()
-  function loadLayoutComponent(name: string) {
+  const layoutInflight: Inflight<unknown> = new Map()
+  function loadLayoutComponent(name: string, quiet = false): Promise<unknown> {
     if (layoutComponentCache.has(name)) return Promise.resolve(layoutComponentCache.get(name))
-    let pending = layoutInflight.get(name)
-    if (!pending) {
-      pending = fetchLayout(name).finally(() => layoutInflight.delete(name))
-      layoutInflight.set(name, pending)
-    }
-    return pending
+    return shared(layoutInflight, name, q => fetchLayout(name, q), quiet)
   }
 
-  async function fetchLayout(name: string) {
+  async function fetchLayout(name: string, quiet: boolean) {
     const url = `${layoutsDir}/${name}.vue`
     try {
       const { template, componentOptions } = await parseSfc(url, `layout-${name}`, 'layout')
@@ -247,6 +243,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       layoutComponentCache.set(name, comp)
       return comp
     } catch (e) {
+      if (quiet) throw e  // 힌트 요청의 실패는 보고·캐시하지 않는다
       if (e instanceof VzError && e.status === 404) {
         // 파일이 없다는 것(404)만 영구 캐시한다. 5xx/네트워크/스크립트 오류는 다음 이동에서 다시 시도한다.
         reportCaught(e, e.diag, { code: 'E_LAYOUT_NOT_FOUND', message: `layout "${name}.vue" not found — rendering page without layout`, hint: `create ${url} or fix the page layout option` }, 'warn')
@@ -263,7 +260,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   function startDeps(file: string) {
     const d = depsOf.get(file)
     if (!d) return
-    if (typeof d.layout === 'string') loadLayoutComponent(d.layout)
+    if (typeof d.layout === 'string') loadLayoutComponent(d.layout, true).catch(() => {})
     if (Array.isArray(d.components)) componentLoader.prefetch(d.components)
   }
 

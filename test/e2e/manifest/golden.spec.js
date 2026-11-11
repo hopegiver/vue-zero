@@ -55,23 +55,36 @@ test('deps: 전이 폐포 · 순환 종료 · 레이아웃 컴포넌트 포함 �
     expect(m.deps['pages/about.vue']).toEqual({ layout: 'admin', components: ['AdminNav', 'AppButton', 'AppHeader', 'Avatar', 'UserCard'] })
     expect(m.deps['pages/users/[id].vue']).toEqual({ layout: false, components: ['Avatar', 'UserCard'] })
     expect('pages/dynamic.vue' in m.deps).toBe(false)
+    // v1.5.0 RV-002: data()/중첩 객체의 layout: 키는 페이지 레이아웃이 아니다 (최상위 옵션 키만 본다)
+    expect(m.deps['pages/grid.vue'].layout).toBe('default')
+    expect(m.deps['pages/nested.vue'].layout).toBe('default')
+    expect(m.deps['pages/mixed.vue'].layout).toBe('admin')
+    expect('pages/twice.vue' in m.deps).toBe(false)
     expect('pages/error.vue' in m.deps).toBe(false)
     expect([m.has404, m.hasError]).toEqual([true, true])
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })
 
-test('layout 판정: 큰따옴표 · 주석 처리된 layout · 키 2회 등장(판정 불가) · pages 가 없는 앱', () => {
+test('layout 판정: 큰따옴표 · 주석 처리된 layout · 최상위 키 2회(판정 불가) · data() 안의 layout 키 무시 · pages 가 없는 앱', () => {
   const dir = tmp()
   try {
     put(dir, 'app/pages/a.vue', sfc('<div/>', 'export default {\n  layout: "x",\n}'))
     put(dir, 'app/pages/b.vue', sfc('<div/>', "export default {\n  // layout: 'nope'\n  data() { return {} }\n}"))
     put(dir, 'app/pages/c.vue', sfc('<div/>', "export default {\n  layout: 'p',\n  data() { return { layout: 'q' } }\n}"))
+    put(dir, 'app/pages/h.vue', sfc('<div/>', "export default {\n  layout: 'p',\n  layout: false,\n}"))
+    put(dir, 'app/pages/e.vue', sfc('<div/>', "export default {\n  data() { return { layout: 'q' } }\n}"))
+    put(dir, 'app/pages/f.vue', sfc('<div/>', "export default Vue.defineComponent({ layout: 'q' })"))
+    put(dir, 'app/pages/g.vue', sfc('<div/>', "export default {\n  data() { return { s: '{' } },\n  layout: 'z',\n}"))
     put(dir, 'app/pages/d.vue', '<template><div/></template>\n')
     const m = JSON.parse(generate(join(dir, 'app')).manifest)
     expect(m.deps['pages/a.vue'].layout).toBe('x')
     expect(m.deps['pages/b.vue'].layout).toBe('default')
-    expect('pages/c.vue' in m.deps).toBe(false)
+    expect(m.deps['pages/c.vue'].layout).toBe('p')
+    expect('pages/h.vue' in m.deps).toBe(false)
     expect(m.deps['pages/d.vue'].layout).toBe('default')
+    expect(m.deps['pages/e.vue'].layout).toBe('default')
+    expect('pages/f.vue' in m.deps).toBe(false)
+    expect(m.deps['pages/g.vue'].layout).toBe('z')
     expect([m.has404, m.components]).toEqual([false, []])
   } finally { rmSync(dir, { recursive: true, force: true }) }
 })

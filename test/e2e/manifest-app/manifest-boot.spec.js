@@ -51,6 +51,8 @@ for (const [label, handler] of [
   ['깨진 JSON', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"v":1,' })],
   ['형식 v2(알 수 없는 버전)', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"v":2,"pages":[],"components":[]}' })],
   ['네트워크 오류', (r) => r.abort()],
+  ['pages 원소가 문자열이 아님(RV-004)', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"v":1,"pages":[1],"components":[]}' })],
+  ['components 원소가 문자열이 아님(RV-004)', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: '{"v":1,"pages":["index"],"components":[null]}' })],
 ]) {
   test(`v1.5.0 on: 매니페스트 ${label} → E_MANIFEST_FETCH 경고 1건 + pages.json/components.json 으로 폴백해 앱은 정상`, async ({ page }) => {
     await useOptions(page, { manifest: true })
@@ -153,4 +155,33 @@ test('v1.5.0 연속 이동: 선행 로드가 있어도 요청은 합집합이다
   const v = vueReqs(reqs)
   expect(new Set(v).size).toBe(v.length)
   expect(v.sort()).toEqual([...HOME_VUE, '/components/AdminBar.vue', '/layouts/admin.vue', '/pages/about.vue', '/pages/admin.vue'].sort())
+})
+
+// v1.5.0 RV-002: 힌트(deps)로 시작한 선행 요청의 실패는 보고하지 않는다 — 틀린 힌트가 거짓 진단을 남기면 AI 가 없는 레이아웃을 만들러 간다.
+test('v1.5.0 틀린 deps(없는 레이아웃·없는 컴포넌트 파일)는 진단을 남기지 않는다: VueZero.errors() 가 비어 있다', async ({ page }) => {
+  await useOptions(page, { manifest: true })
+  await editManifest(page, (m) => {
+    m.components.push('Phantom')
+    m.deps['pages/index.vue'] = { layout: 'ghostlayout', components: ['Phantom', 'Panel', 'AppNav', 'Badge'] }
+  })
+  await page.goto('/')
+  await expect(page.getByTestId('page')).toHaveText('Home')
+  await expect(page.getByTestId('layout-default')).toBeVisible()
+  await expect(page.getByTestId('panel')).toBeVisible()
+  await settle(page)
+  expect(await vzErrors(page)).toEqual([])
+})
+
+test('v1.5.0 힌트가 맞고 파일이 실제로 필요한데 없으면 정규 경로가 그대로 진단한다 (E_LAYOUT_NOT_FOUND 1건 / E_COMPONENT_FETCH)', async ({ page }) => {
+  await useOptions(page, { manifest: true })
+  await page.route('**/layouts/default.vue', (r) => r.fulfill({ status: 404, body: 'nope' }))
+  await page.route('**/components/Badge.vue', (r) => r.fulfill({ status: 404, body: 'nope' }))
+  await page.goto('/')
+  await expect(page.getByTestId('page')).toHaveText('Home')
+    await expect.poll(async () => (await vzErrors(page)).length).toBeGreaterThanOrEqual(2)
+  await settle(page)
+  const errs = await vzErrors(page)
+  expect(errs.filter((e) => e.code === 'E_LAYOUT_NOT_FOUND')).toHaveLength(1)
+  expect(errs.filter((e) => e.code === 'E_COMPONENT_FETCH').length).toBeGreaterThan(0)
+  expect(errs.find((e) => e.code === 'E_LAYOUT_NOT_FOUND').file).toBe('/layouts/default.vue')
 })

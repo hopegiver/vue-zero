@@ -10,6 +10,13 @@ export interface Manifest {
 
 const PREFIX = 'vue-zero-'
 
+/** 응답 본문의 해시(명세 manifest-format.md: CRLF→LF 정규화 후 sha256 앞 10자, 소문자 hex) */
+async function hash10(res: Response): Promise<string> {
+  const text = new TextDecoder('utf-8', { ignoreBOM: true }).decode(await res.arrayBuffer()).replace(/\r\n/g, '\n')
+  const sum = new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text)))
+  return [...sum.slice(0, 5)].map(b => (b + 256).toString(16).slice(1)).join('')
+}
+
 /** localhost/127.0.0.1/[::1] 또는 ?vzdev — 템플릿 index.html 과 같은 규칙 */
 export const isDevHost = (): boolean =>
   /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || /[?&]vzdev\b/.test(location.search)
@@ -29,7 +36,8 @@ export async function loadManifest(url: string): Promise<Manifest | null> {
   if (!res.ok) return fail(`HTTP ${res.status}`)
   try {
     const m = await res.json()
-    if (m && m.v === 1 && Array.isArray(m.pages) && Array.isArray(m.components)) return m
+    const strs = (a: unknown) => Array.isArray(a) && a.every(x => typeof x === 'string')
+    if (m && m.v === 1 && strs(m.pages) && strs(m.components)) return m
   } catch { /* 아래에서 보고 */ }
   return fail('invalid format (expected v1)')
 }
@@ -53,7 +61,11 @@ export function createPersistentCache(hashes: Map<string, string>, dirs: string[
       if (hit) return hit
     } catch { /* 폴백: 일반 fetch */ }
     const res = await fetch(key)
-    if (cache && res.ok) cache.put(key, res.clone()).catch(() => {})
+    // 해시와 내용이 맞는 응답만 저장한다 — 옛 내용·SPA fallback HTML·리다이렉트·비정상 상태는 이번 화면에만 쓰고 다음 방문에 다시 받는다
+    if (cache && res.ok && !res.redirected) {
+      const keep = res.clone()
+      hash10(res.clone()).then(h => h === hash && cache!.put(key, keep)).catch(() => {})
+    }
     return res
   }
 

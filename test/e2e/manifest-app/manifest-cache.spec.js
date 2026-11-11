@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { createHash } from 'node:crypto'
 import { useOptions, trackAll, spaPush, vzErrors, settle, serveAsProd, PROD, bootReqs, vueReqs, cacheDump, editManifest } from '../helpers.js'
 
 // v1.5.0: 영속 캐시 — prod 호스트에서 files 해시가 있는 .vue 는 Cache Storage 에 `<경로>?v=<해시>` 키로 저장·조회한다.
@@ -9,6 +10,9 @@ test.beforeEach(async ({ context, baseURL, page }) => {
   await useOptions(page, { manifest: true })
 })
 
+// 명세와 같은 정규화: CRLF→LF 뒤 sha256 앞 10자
+const h10 = (t) => createHash('sha256').update(t.replace(/\r\n/g, '\n'), 'utf8').digest('hex').slice(0, 10)
+const badgeSfc = (tag) => `<template><span data-testid="badge">${tag} {{ label }}</span></template>\n<script>\nexport default { props: { label: { type: String, default: '' } } }\n</script>\n`
 const manifestOf = async (request) => (await request.get('/vz-manifest.json')).json()
 const FILES = ['components/AppNav.vue', 'components/Badge.vue', 'components/Panel.vue', 'layouts/default.vue', 'pages/index.vue']
 
@@ -63,14 +67,16 @@ test('v1.5.0 해시 변경: 바뀐 파일만 새 키로 다시 요청하고 옛 
   const version = await page.evaluate(() => window.VueZero.version)
   await expect.poll(async () => ((await cacheDump(page))[`vue-zero-${version}`] || []).length).toBe(FILES.length)
   // 새 배포 흉내: Badge 의 내용과 해시만 바뀐다
-  await editManifest(page, (x) => { x.files['components/Badge.vue'] = 'feedface01' })
-  await page.route('**/components/Badge.vue*', (r) => r.fulfill({ contentType: 'text/plain', body: '<template><span data-testid="badge">v2 {{ label }}</span></template>\n<script>\nexport default { props: { label: { type: String, default: "" } } }\n</script>\n' }))
+  const v2 = badgeSfc('v2')
+  const H2 = h10(v2)
+  await editManifest(page, (x) => { x.files['components/Badge.vue'] = H2 })
+  await page.route('**/components/Badge.vue*', (r) => r.fulfill({ contentType: 'text/plain', body: v2 }))
   const reqs = trackAll(page)
   await page.reload()
   await expect(page.getByTestId('badge').first()).toContainText('v2 ')
-  expect(vueReqs(reqs)).toEqual(['/components/Badge.vue?v=feedface01'])
+  expect(vueReqs(reqs)).toEqual([`/components/Badge.vue?v=${H2}`])
   await expect.poll(async () => (await cacheDump(page))[`vue-zero-${version}`]).toEqual(
-    FILES.map((f) => `/${f}?v=${f === 'components/Badge.vue' ? 'feedface01' : m.files[f]}`).sort())
+    FILES.map((f) => `/${f}?v=${f === 'components/Badge.vue' ? H2 : m.files[f]}`).sort())
 })
 
 test('v1.5.0 유휴 정리: 현재 매니페스트에 없는 옛 항목과 다른 버전의 캐시를 지우고, 이 앱 경로 밖 항목·무관한 캐시는 남긴다', async ({ page }) => {
@@ -169,4 +175,59 @@ test('v1.5.0 off 에서는 prod 호스트라도 캐시를 쓰지 않는다 (옵�
   expect(vueReqs(reqs).every((u) => !u.includes('?'))).toBe(true)
   expect(bootReqs(reqs).sort()).toEqual(['/components/components.json', '/pages/pages.json'])
   expect(Object.keys(await cacheDump(page))).toEqual([])
+})
+
+// v1.5.0 RV-001: 캐시 키는 콘텐츠 해시다 — 해시와 내용이 맞는 정적 소스만 저장한다.
+// 불일치·HTML(SPA fallback)·리다이렉트·비정상 상태 응답은 화면에는 그대로 쓰이되(v1.4.0 과 같은 결과) 저장하지 않아, 서버가 정상화되면 다음 방문에 회복된다.
+const pb = (page) => page.getByTestId('panel').getByTestId('badge')
+const NEW = badgeSfc('NEW')
+const bad = {
+  '해시 불일치(옛 내용)': { fulfill: { contentType: 'text/plain', body: badgeSfc('OLD') }, shows: 'OLD panel' },
+  'HTML(SPA fallback 200 text/html)': { fulfill: { contentType: 'text/html', body: '<!DOCTYPE html><html><body><div id="app"></div></body></html>' }, shows: null },
+  // Playwright 는 리다이렉트 중간 요청을 가로채지 못해 실제 3xx 대신 fetch 응답의 redirected 플래그만 세운다(내용·해시는 일치)
+  '리다이렉트를 거친 응답': { redirect: true, fulfill: { contentType: 'text/plain', body: NEW }, shows: 'NEW panel' },
+  // 본문이 해시와 일치해도 ok 가 아니면 저장하지 않는다 (res.ok 분기)
+  '404(본문은 해시와 일치)': { fulfill: { status: 404, body: NEW }, shows: null },
+  '500(본문은 해시와 일치)': { fulfill: { status: 500, body: NEW }, shows: null },
+}
+for (const [label, c] of Object.entries(bad)) {
+  test(`v1.5.0 저장 검증: ${label} 은 저장하지 않는다 — 서버 정상화 후 재방문에서 새 내용으로 회복`, async ({ page }) => {
+    const H = h10(NEW)
+    await editManifest(page, (x) => { x.files['components/Badge.vue'] = H })
+    if (c.redirect) await page.addInitScript(() => { const f = window.fetch; window.fetch = async (...a) => { const r = await f(...a); if (String(a[0]).includes('Badge.vue') && !localStorage.getItem('fixed')) Object.defineProperty(r, 'redirected', { value: true }); return r } })
+    let serve = (r) => r.fulfill(c.fulfill)
+    await page.route('**/components/Badge.vue*', (r) => serve(r))
+    await page.goto(PROD + '/')
+    await expect(page.getByTestId('page')).toHaveText('Home')
+    if (c.shows) await expect(pb(page)).toHaveText(c.shows)
+    else await expect(pb(page)).toHaveCount(0)
+    const version = await page.evaluate(() => window.VueZero.version)
+    // 정상 파일 4건이 저장될 때까지 기다린 뒤 Badge 키가 없음을 본다
+    await expect.poll(async () => ((await cacheDump(page))[`vue-zero-${version}`] || []).length).toBeGreaterThanOrEqual(4)
+    expect((await cacheDump(page))[`vue-zero-${version}`].some((k) => k.includes('Badge.vue'))).toBe(false)
+    // 서버 정상화 → 재방문: 고착 없이 Badge 를 다시 요청해 새 내용을 보여 준다
+    serve = (r) => r.fulfill({ contentType: 'text/plain', body: NEW })
+    await page.evaluate(() => localStorage.setItem('fixed', '1'))
+    const reqs = trackAll(page)
+    await page.reload()
+    await expect(pb(page)).toHaveText('NEW panel')
+    expect(vueReqs(reqs)).toEqual([`/components/Badge.vue?v=${H}`])
+    await expect.poll(async () => (await cacheDump(page))[`vue-zero-${version}`]).toContain(`/components/Badge.vue?v=${H}`)
+    // 정상 저장된 뒤에는 적중(요청 0건)
+    const reqs2 = trackAll(page)
+    await page.reload()
+    await expect(pb(page)).toHaveText('NEW panel')
+    expect(vueReqs(reqs2)).toEqual([])
+  })
+}
+
+test('v1.5.0 저장 검증: CRLF 로 서빙된 소스도 해시(정규화)가 맞으면 저장된다', async ({ page }) => {
+  const crlf = NEW.replace(/\n/g, '\r\n')
+  const H = h10(NEW)
+  await editManifest(page, (x) => { x.files['components/Badge.vue'] = H })
+  await page.route('**/components/Badge.vue*', (r) => r.fulfill({ contentType: 'text/plain', body: crlf }))
+  await page.goto(PROD + '/')
+  await expect(pb(page)).toHaveText('NEW panel')
+  const version = await page.evaluate(() => window.VueZero.version)
+  await expect.poll(async () => (await cacheDump(page))[`vue-zero-${version}`]).toContain(`/components/Badge.vue?v=${H}`)
 })

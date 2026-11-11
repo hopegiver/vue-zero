@@ -38,6 +38,7 @@ package/
 │   │   ├── SfcParser.ts         # .vue 파일 fetch → template/script/style 분리
 │   │   ├── RouteScanner.ts      # pages/ 스캔 → 라우트 자동 등록
 │   │   ├── ComponentLoader.ts   # components/ 스캔 → 전역 컴포넌트 자동 등록
+│   │   ├── Inflight.ts          # 동시 로드 병합 + 힌트(quiet) 요청 실패 시 정규 경로 재시도
 │   │   ├── Manifest.ts          # vz-manifest.json 로드(E_MANIFEST_FETCH 폴백) + Cache Storage 영속 캐시(옵트인)
 │   │   ├── AuthGuard.ts         # JWT 기반 경량 인증 가드
 │   │   └── Diagnostics.ts       # report() · VueZero.errors() 링 버퍼 · VzError (구조화 에러)
@@ -110,7 +111,7 @@ test/
 - **스크립트 평가**: `.vue` 의 `<script>` 는 trim 하지 않고 앞쪽 줄 수만큼 `\n` 을 채운 뒤 `//# sourceURL=<.vue 경로>` 를 붙여 실행한다(스택이 실제 .vue 줄을 가리키게). `<script>` 파싱을 건드릴 때 이 줄 정렬이 깨지지 않게 한다
 - **인증 가드 순서**: 인증 검사는 SFC 파싱 직후, 컴포넌트 preload/레이아웃 로드 **앞**이다. loginPage 가 보호 상태면 `E_LOGIN_PAGE_PROTECTED`로 보고하고 그 loginPage 경로로의 이동만 통과시켜(같은 라우트의 다른 경로는 계속 리다이렉트) 루프를 끊는다
 - **404/error 지연 로드**: `404.vue`/`error.vue` 존재를 부팅 때 fetch 하지 않는다. catch-all 라우트는 항상 등록하고 처음 필요할 때 로드하며, 없으면(404) 그 사실만 캐시한다(404.vue 없음: 빈 본문 + `E_NOT_FOUND_PAGE` 1회, error.vue 없음: 조용히 생략)
-- **매니페스트(옵트인 `manifest`)**: 매니페스트의 `has404`/`hasError`/`build` 는 라이브러리가 읽지 않는다. `deps` 는 힌트라 틀려도 동작이 같아야 하며, 인증이 켜진 미인증 상태에서는 SFC 의 auth 판단 뒤에만 `deps` 를 시작한다. 영속 캐시는 같은 출처의 정적 `.vue` 소스만 저장한다(토큰·사용자 데이터 금지), dev 호스트에서는 끈다. 형식을 바꾸면 `v` 를 올리고 template 생성기·골든 사본을 함께 갱신한다
+- **매니페스트(옵트인 `manifest`)**: 매니페스트의 `has404`/`hasError`/`build` 는 라이브러리가 읽지 않는다. `deps` 는 힌트라 틀려도 동작이 같아야 하며, 인증이 켜진 미인증 상태에서는 SFC 의 auth 판단 뒤에만 `deps` 를 시작한다. 영속 캐시는 같은 출처의 정적 `.vue` 소스만, **본문 해시가 매니페스트 값과 일치하고 OK·비리다이렉트인 응답만** 저장한다(토큰·사용자 데이터 금지, 해시 정규화는 명세와 동일), dev 호스트에서는 끈다. 힌트(`deps`)가 시작한 선행 요청의 실패는 보고·캐시하지 않고 정규 경로가 필요할 때 다시 받아 보고한다(`core/Inflight.ts`). 형식을 바꾸면 `v` 를 올리고 template 생성기·골든 사본을 함께 갱신한다
 - **로더 캐시**: 같은 파일의 동시 로드는 in-flight Promise 로 병합하고(실패 시 맵에서 삭제), 레이아웃은 404 일 때만 null 캐시한다
 - **의존성 없음**: Vue 3 외 런타임 의존성 금지
 - **주석 최소화**: 코드가 자명하면 주석 생략
