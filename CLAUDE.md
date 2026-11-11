@@ -38,7 +38,8 @@ package/
 │   │   ├── SfcParser.ts         # .vue 파일 fetch → template/script/style 분리
 │   │   ├── RouteScanner.ts      # pages/ 스캔 → 라우트 자동 등록
 │   │   ├── ComponentLoader.ts   # components/ 스캔 → 전역 컴포넌트 자동 등록
-│   │   └── AuthGuard.ts         # JWT 기반 경량 인증 가드
+│   │   ├── AuthGuard.ts         # JWT 기반 경량 인증 가드
+│   │   └── Diagnostics.ts       # report() · VueZero.errors() 링 버퍼 · VzError (구조화 에러)
 │   └── utils/
 │       └── StyleInjector.ts     # <style> 블록 → DOM <style> 태그 주입
 ├── dist/
@@ -87,6 +88,8 @@ test/
 - 알려진 라이브러리 버그를 재현만 해 두고 아직 고치지 않는 경우 `test.fixme(!process.env.VZ_RUN_FIXME, '사유')` 로 남기고 `VZ_RUN_FIXME=1` 로 실행해 재현한다. 현재 fixme 없음 (v1.3.1 에서 "빠른 연속 이동" 레이스 수정).
 - 테스트 검증력 확인(변이): `VUEZERO_DIST` 에 과거 릴리스의 dist 를 넣어(`git show <커밋>:dist/vue-zero.js > /tmp/x.js`) 회귀 테스트가 실제로 실패하는지 본다. 예: v1.2.0 dist 는 지연 로딩/base64url 테스트가, v1.1.3 dist 는 isReady 회귀가 실패해야 한다.
 - 앱별 옵션은 `useOptions(page, {...})`(addInitScript)로 주입하고, 토큰은 `seedStorage`로 주입한다. 네트워크 실패/지연은 `page.route` 와 `gate()`(수동 해제)로 만든다. 고정 sleep 금지 — 상태를 기다린다(`settle()`은 프레임만 흘려보낸다).
+- 진단 테스트: `e2e/basic/diagnostics.spec.js`(코드·버퍼·sourceURL 줄 정렬·dev 경고), `e2e/basic/loading.spec.js`(in-flight 병합·레이아웃 캐시), `e2e/auth/login-guard.spec.js`(loginPage 루프·인증 순서). 앱 안의 오류 재현 픽스처는 `test/apps/basic/pages/err-*.vue`, `layouts/boom.vue`, `components/Boom.vue`. 앱에 쌓인 보고는 `helpers.js`의 `vzErrors(page)`(=`VueZero.errors()`)로 읽고, 콘솔 메시지의 Error 인자 스택은 `collectMessages(page)`로 본다. 게이트로 붙잡힌 이동은 `spaStart`(완료를 기다리지 않음)로 시작한다.
+- `pnpm build` 는 `../template/app/assets/js/` 로 dist 를 복사한다. 다른 저장소를 건드리지 않으려면 `VZ_NO_TEMPLATE_COPY=1 pnpm build`(check 도 동일).
 - 테스트 앱 코드도 vue-zero 규칙(Options API, scoped 금지, import 없음)을 따른다.
 
 **규칙:** 버그 수정은 반드시 재현 테스트와 함께 넣는다 (테스트 이름/주석에 버전 표기). 라이브러리 동작을 바꾸는 변경은 `pnpm build && pnpm test` 통과 후에만 커밋한다.
@@ -96,7 +99,10 @@ test/
 ## 구현 규칙
 
 - **빌드 결과물**: `dist/vue-zero.js` 단일 파일만. `.d.ts`, `.map` 등 생성 금지
-- **에러 처리**: 브라우저 콘솔에 명확한 에러 메시지 출력
+- **에러 처리**: 모든 오류·경고는 `console.*` 직접 호출이 아니라 `report({code, stage, file, line?, message, hint})`(`core/Diagnostics.ts`)로 낸다. 안정 코드(`E_…`) + 파일 경로 + 해결 hint 필수, 콘솔 형식 `[vue-zero] CODE file:line — message` + 다음 줄 `hint: …`. 로드/파싱 단계 오류는 `VzError`를 throw 하고 잡는 쪽에서 `reportCaught` 한 번만 보고한다(중복 보고 금지). 버퍼/콘솔에 토큰·쿼리스트링·사용자 데이터를 넣지 않는다(경로·HTTP 상태만). 새 코드는 README 의 "Errors and Diagnostics" 표에 추가한다
+- **스크립트 평가**: `.vue` 의 `<script>` 는 trim 하지 않고 앞쪽 줄 수만큼 `\n` 을 채운 뒤 `//# sourceURL=<.vue 경로>` 를 붙여 실행한다(스택이 실제 .vue 줄을 가리키게). `<script>` 파싱을 건드릴 때 이 줄 정렬이 깨지지 않게 한다
+- **인증 가드 순서**: 인증 검사는 SFC 파싱 직후, 컴포넌트 preload/레이아웃 로드 **앞**이다. loginPage 가 보호 상태면 `E_LOGIN_PAGE_PROTECTED`로 보고하고 공개 취급해 리다이렉트 루프를 끊는다
+- **로더 캐시**: 같은 파일의 동시 로드는 in-flight Promise 로 병합하고(실패 시 맵에서 삭제), 레이아웃은 404 일 때만 null 캐시한다
 - **의존성 없음**: Vue 3 외 런타임 의존성 금지
 - **주석 최소화**: 코드가 자명하면 주석 생략
 - **CSP**: Blob URL + dynamic import 사용. `unsafe-eval` 의존 금지

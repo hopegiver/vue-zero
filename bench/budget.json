@@ -3,23 +3,23 @@
  "size": "M",
  "baseline": {
   "coldRequests": 17,
-  "coldBytes": 80988,
+  "coldBytes": 83286,
   "warmRequests": 17,
   "navComponentRequests": 50,
-  "vzBrotliBytes": 4503,
-  "vzRawBytes": 11279,
-  "libsBrotliBytes": 74942,
-  "coldReadyMs": 42,
-  "navFirstMs": 43
+  "vzBrotliBytes": 6801,
+  "vzRawBytes": 17126,
+  "libsBrotliBytes": 77240,
+  "coldReadyMs": 40,
+  "navFirstMs": 39
  },
  "hard": {
   "coldRequests": 20,
-  "coldBytes": 93137,
+  "coldBytes": 95779,
   "warmRequests": 20,
   "navComponentRequests": 58,
-  "vzBrotliBytes": 5179,
-  "vzRawBytes": 12971,
-  "libsBrotliBytes": 86184
+  "vzBrotliBytes": 7822,
+  "vzRawBytes": 19695,
+  "libsBrotliBytes": 88826
  },
  "exact": {
   "unexpectedInitialComponents": 0,
@@ -29,7 +29,7 @@
   "navComponentRequestsEqualsUnion": true
  },
  "soft": {
-  "coldReadyMs": 84,
-  "navFirstMs": 86
+  "coldReadyMs": 80,
+  "navFirstMs": 78
  }
 }

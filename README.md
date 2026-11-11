@@ -144,6 +144,46 @@ VueZero.createApp({
 })
 ```
 
+## Errors and Diagnostics
+
+Every problem vue-zero detects is reported once in a fixed format, both in the console and in a ring buffer an AI (or a test) can read:
+
+```
+[vue-zero] E_SCRIPT_SETUP /pages/foo.vue — script eval failed: Failed to resolve module specifier "vue"
+hint: No <script setup>/Composition API/import. Use <script>export default { ... }</script> (Options API); Vue is global
+```
+
+```js
+VueZero.version   // "x.y.z" — package.json version, injected at build time
+VueZero.errors()  // copy of the last 50 reports, oldest first:
+// [{ code, stage, file, line?, message, hint, level: 'error'|'warn', time }]
+```
+
+`stage` is one of `load | parse | eval | render | route | auth | manifest | config`. Entries hold paths and HTTP status only — never tokens, query strings or user data. Runtime errors carry the real `.vue` file and line (`/pages/foo.vue:12`): scripts are evaluated with a `sourceURL` and line-aligned, so stack traces in the browser DevTools point at the `.vue` file too.
+
+| Code | Level | Stage | Meaning / fix |
+|------|-------|-------|---------------|
+| `E_SCRIPT_SETUP` | error | eval | `<script setup>`, Composition API or `import ... from 'vue'`. Use an Options API `export default {}` |
+| `E_RELATIVE_IMPORT` | error | eval | Any `import` in a `.vue` script (scripts run as Blob URLs). Remove it; use globals |
+| `E_SCRIPT_TS` | error | eval | `lang="ts"` / type annotations. Plain JavaScript only |
+| `E_SCRIPT_EVAL` | error | eval | Other syntax / top-level error in `<script>` |
+| `E_PAGE_FETCH` / `E_LAYOUT_FETCH` / `E_COMPONENT_FETCH` | error | load | `.vue` fetch failed (HTTP status or network). 404: file missing or not in `pages.json`/`components.json` |
+| `E_PAGE_LOAD`, `E_COMPONENT_LOAD`, `E_ERROR_PAGE` | error | load | Other failure while loading a page / component / `error.vue` |
+| `E_LAYOUT_NOT_FOUND` | warn | load | Layout file is 404: the page renders without a layout (only 404 is cached; 5xx/network errors are retried on the next navigation) |
+| `E_RENDER` | error | render | Template render threw (undefined/null data, computed or prop) |
+| `E_RUNTIME` | error | render | Hook / method / event handler threw. See `file:line` |
+| `E_VUE_WARN` | warn | render | Vue development-build warning (needs `vue.global.js`, not `.prod.js`) |
+| `E_STYLE_SCOPED` | warn | parse | `<style scoped>` is not supported; the style is applied globally |
+| `E_RESERVED_TAG` | error | manifest | `pages.json` has a page named like an HTML tag (`table`, `div`, ...). Rename it. Checked at startup |
+| `E_MANIFEST_ENTRY` | error | manifest | `pages.json` entry ends with `.vue` |
+| `E_MANIFEST_MISSING`, `E_NO_PAGES` | warn | manifest | `pages.json` missing / empty |
+| `E_LOGIN_PAGE_PROTECTED` | error | auth | `loginPage` points at a protected page (no `auth: false`), which would redirect forever. Add `auth: false`; the page is treated as public meanwhile |
+| `E_LOGIN_PAGE_MISSING` | error | auth | `loginPage` matches no page and the 404 page is protected |
+| `E_ROUTE` | error | route | Unexpected exception during navigation |
+| `E_OPTION_INVALID`, `E_AUTH_CONFIG` | error / warn | config | Invalid `createApp` option |
+
+During development, load the Vue **development** build (`vue.global.js`) instead of `vue.global.prod.js`: with the prod build Vue hides template warnings (unknown components, undefined properties). On `localhost`, vue-zero prints a one-time `console.info` when it detects the prod build.
+
 ## Rules for AI
 
 1. **Register files** — Add pages to `pages/pages.json`, components to `components/components.json` (without `.vue` extension). Or run `npm run scan`.
