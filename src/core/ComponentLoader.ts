@@ -1,4 +1,5 @@
 import { parseSfc } from './SfcParser'
+import { reportCaught } from './Diagnostics'
 
 declare const Vue: typeof import('vue')
 
@@ -90,11 +91,11 @@ export class ComponentLoader {
     const url = `${this.componentsDir}/${name}.vue`
     try {
       const { template, componentOptions } = await parseSfc(url, `component-${name}`)
-      const component = { ...componentOptions, name, template }
+      const component = { ...componentOptions, name, template, __file: url }
       this.cache.set(name, component)
       return component
     } catch (e) {
-      console.error(`[vue-zero] 컴포넌트 "${name}" 로드 실패 (${url}):`, e)
+      reportCaught(e, { code: 'E_COMPONENT_LOAD', stage: 'load', file: url, message: `component "${name}" load failed`, hint: `check ${url}` })
       throw e
     }
   }

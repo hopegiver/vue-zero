@@ -92,7 +92,7 @@ test('error.vue: 페이지 fetch 실패(500) 시 error 페이지, 이후 다른 
   await expect(page.getByTestId('page')).toHaveText('Home')
   await page.locator('a[data-link="/slow-b"]').click()
   await expect(page.getByTestId('error-page')).toBeVisible()
-  expect(c.errors.some((e) => e.includes('페이지 로드 실패') && e.includes('/slow-b'))).toBe(true)
+  expect(c.errors.some((e) => e.includes('E_PAGE_FETCH') && e.includes('/pages/slow-b.vue') && e.includes('500'))).toBe(true)
   // v1.3.1: 비활성 상태로 주입되는 페이지 스타일도 error 페이지에서는 활성화되어야 한다
   expect(await computedColor(page.getByTestId('error-page'))).toBe('rgb(200, 0, 100)')
 

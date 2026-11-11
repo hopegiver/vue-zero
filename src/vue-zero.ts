@@ -2,9 +2,15 @@ import { RouteScanner } from './core/RouteScanner'
 import { ComponentLoader } from './core/ComponentLoader'
 import { AuthGuard } from './core/AuthGuard'
 import { parseSfc, getStyleInjector } from './core/SfcParser'
+import { report, reportCaught, errors as diagErrors, VzError } from './core/Diagnostics'
 
 declare const Vue: typeof import('vue')
 declare const VueRouter: typeof import('vue-router')
+declare const __VZ_VERSION__: string
+
+export const version: string = __VZ_VERSION__
+/** 최근 진단(에러·경고) 링 버퍼 사본 (최대 50개). 경로·상태코드만 담고 토큰/사용자 데이터는 담지 않는다. */
+export const errors = diagErrors
 
 export interface CreateAppOptions {
   baseDir?: string
@@ -22,12 +28,12 @@ function validateOptions(options: CreateAppOptions): void {
   for (const key of ['pagesDir', 'componentsDir', 'layoutsDir'] as const) {
     const val = options[key]
     if (val !== undefined && val.includes('\\')) {
-      console.error(`[vue-zero] "${key}" must use "/" as separator (got: "${val}")`)
+      report({ code: 'E_OPTION_INVALID', stage: 'config', file: '', message: `"${key}" must use "/" as separator (got: "${val}")`, hint: `use "/" in createApp({ ${key} })` })
     }
   }
   if (options.auth && !options.auth.enabled) {
     if (options.auth.loginPage || options.auth.tokenKey) {
-      console.warn('[vue-zero] auth options are set but "enabled" is false — auth guard will not run')
+      report({ code: 'E_AUTH_CONFIG', stage: 'config', file: '', message: 'auth options are set but "enabled" is false — auth guard will not run', hint: 'set auth: { enabled: true }' }, 'warn')
     }
   }
 }
@@ -64,6 +70,33 @@ function createProgressBar(): { start: () => void; done: () => void } {
   }
 }
 
+// 컴포넌트 인스턴스 → 정의된 .vue 파일 경로 (옵션의 __file, 없으면 부모를 거슬러 올라간다)
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function fileOf(instance: any): string {
+  for (let i = instance?.$; i; i = i.parent) {
+    if (i.type?.__file) return String(i.type.__file)
+  }
+  return ''
+}
+
+function lineFromStack(err: unknown, file: string): number | undefined {
+  const stack = err instanceof Error ? err.stack : undefined
+  const at = file && stack ? stack.indexOf(file + ':') : -1
+  if (at < 0) return undefined
+  const m = /^\d+/.exec(stack!.slice(at + file.length + 1))
+  return m ? Number(m[0]) : undefined
+}
+
+const VUE_ERROR_INFO = ['setup function', 'render function', 'native event handler', 'component event handler', 'vnode hook', 'directive hook', 'transition hook', 'app errorHandler', 'app warnHandler', 'ref function', 'async component loader', 'scheduler flush']
+
+// prod 빌드의 Vue.warn 은 NOOP(인자 0개)이라 템플릿 경고(미등록 컴포넌트·미정의 속성 등)가 전부 사라진다
+function hintDevBuild(): void {
+  const local = /^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?|.+\.localhost)$/.test(location.hostname)
+  if (local && typeof Vue.warn === 'function' && Vue.warn.length === 0) {
+    console.info('[vue-zero] Vue prod build: template warnings (unknown components, undefined properties) are hidden. Load vue.global.js (dev build) in development to see them.')
+  }
+}
+
 export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   validateOptions(options)
 
@@ -94,7 +127,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const globalComponents = componentLoader.createAsyncComponents(compNames)
 
   if (records.length === 0) {
-    console.warn('[vue-zero] No pages found. Create pages/pages.json: ["index", "about", ...]')
+    report({ code: 'E_NO_PAGES', stage: 'manifest', file: `${pagesDir}/pages.json`, message: 'No pages found', hint: 'Create pages/pages.json: ["index", "about", ...]' }, 'warn')
   }
 
   // 3. 캐시
@@ -107,44 +140,34 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const authCache = new Map<string, boolean>()  // true = 보호, false = 공개
   const recordByName = new Map(records.map(r => [r.name, r]))
 
-  // 4. SFC/컴포넌트 로더
-  async function loadSfc(name: string, filePath: string) {
-    if (sfcCache.has(name)) return sfcCache.get(name)!
-    const sfc = await parseSfc(filePath, `page-${name}`, 'page')
-    await componentLoader.preload(sfc.template)
-    sfcCache.set(name, sfc)
-    return sfc
+  // 4. SFC/컴포넌트 로더 — 같은 파일의 동시 요청은 진행 중인 Promise 로 합치고, 실패하면 맵에서 지워 다시 시도할 수 있게 한다
+  const sfcInflight = new Map<string, Promise<Awaited<ReturnType<typeof parseSfc>>>>()
+  function loadSfc(name: string, filePath: string) {
+    const cached = sfcCache.get(name)
+    if (cached) return Promise.resolve(cached)
+    let pending = sfcInflight.get(name)
+    if (!pending) {
+      pending = parseSfc(filePath, `page-${name}`, 'page')
+        .then(sfc => { sfcCache.set(name, sfc); return sfc })
+        .finally(() => sfcInflight.delete(name))
+      sfcInflight.set(name, pending)
+    }
+    return pending
   }
-
-  const HTML_RESERVED = new Set([
-    'html','body','head','base','meta','link','style','script','noscript',
-    'template','slot','component',
-    'div','span','p','a','br','hr','img','input','button','select','option',
-    'textarea','form','label','fieldset','legend','table','thead','tbody',
-    'tfoot','tr','th','td','caption','colgroup','col',
-    'ul','ol','li','dl','dt','dd',
-    'h1','h2','h3','h4','h5','h6',
-    'header','footer','main','nav','section','article','aside',
-    'details','summary','dialog','figure','figcaption',
-    'video','audio','source','canvas','svg','iframe','embed','object',
-    'pre','code','blockquote','strong','em','small','sub','sup','mark',
-  ])
 
   function buildPageComponent(
     name: string,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     sfc: { template: string; componentOptions: any },
+    file: string,
   ) {
     if (componentCache.has(name)) return componentCache.get(name)!
-
-    if (HTML_RESERVED.has(name)) {
-      console.error(`[vue-zero] 페이지 파일명 "${name}"은 HTML 예약 태그와 충돌합니다. 파일명을 변경하세요.`)
-    }
 
     const comp = Vue.defineComponent({
       ...sfc.componentOptions,
       name,
       template: sfc.template,
+      __file: file,
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       components: globalComponents as any,
     })
@@ -160,8 +183,18 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     return comp
   }
 
-  async function loadLayoutComponent(name: string) {
-    if (layoutComponentCache.has(name)) return layoutComponentCache.get(name)
+  const layoutInflight = new Map<string, Promise<unknown>>()
+  function loadLayoutComponent(name: string) {
+    if (layoutComponentCache.has(name)) return Promise.resolve(layoutComponentCache.get(name))
+    let pending = layoutInflight.get(name)
+    if (!pending) {
+      pending = fetchLayout(name).finally(() => layoutInflight.delete(name))
+      layoutInflight.set(name, pending)
+    }
+    return pending
+  }
+
+  async function fetchLayout(name: string) {
     const url = `${layoutsDir}/${name}.vue`
     try {
       const { template, componentOptions } = await parseSfc(url, `layout-${name}`, 'layout')
@@ -174,13 +207,20 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
         ...(componentOptions as any),
         name: `layout-${name}`,
         template: layoutTemplate,
+        __file: url,
         components: globalComponents as any,
       })
       layoutComponentCache.set(name, comp)
       return comp
-    } catch {
-      console.warn(`[vue-zero] layout "${name}.vue" not found — rendering page without layout`)
-      layoutComponentCache.set(name, null)
+    } catch (e) {
+      if (e instanceof VzError && e.status === 404) {
+        // 파일이 없다는 것(404)만 영구 캐시한다. 5xx/네트워크/스크립트 오류는 다음 이동에서 다시 시도한다.
+        reportCaught(e, e.diag, { code: 'E_LAYOUT_NOT_FOUND', message: `layout "${name}.vue" not found — rendering page without layout`, hint: `create ${url} or fix the page layout option` }, 'warn')
+        layoutComponentCache.set(name, null)
+      } else {
+        const fallback = { code: 'E_LAYOUT_FETCH', stage: 'load' as const, file: url, message: `layout "${name}.vue" load failed`, hint: `check ${url}` }
+        reportCaught(e, fallback, e instanceof VzError ? { message: `layout "${name}.vue": ${e.diag.message} — rendering page without layout` } : undefined)
+      }
       return null
     }
   }
@@ -191,7 +231,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     name: record.name,
     component: async () => {
       const sfc = await loadSfc(record.name, record.filePath)
-      return buildPageComponent(record.name, sfc)
+      return buildPageComponent(record.name, sfc, record.filePath)
     },
   }))
 
@@ -201,7 +241,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       name: '404',
       component: async () => {
         const sfc = await loadSfc('404', notFoundUrl)
-        return buildPageComponent('404', sfc)
+        return buildPageComponent('404', sfc, notFoundUrl)
       },
     })
   }
@@ -232,17 +272,35 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
 
     const name = String(to.name)
     const record = recordByName.get(name)
+    const file = record ? record.filePath : name === '404' ? notFoundUrl : ''
 
     try {
-      // 페이지 SFC 로드 + 컴포넌트 빌드
-      if (record) {
-        const sfc = await loadSfc(record.name, record.filePath)
-        buildPageComponent(name, sfc)
-      } else if (name === '404' && has404) {
-        const sfc = await loadSfc('404', notFoundUrl)
-        buildPageComponent('404', sfc)
-      }
+      // 페이지 SFC 로드(파싱까지) + 컴포넌트 빌드
+      let sfc: Awaited<ReturnType<typeof parseSfc>> | undefined
+      if (record) sfc = await loadSfc(record.name, record.filePath)
+      else if (name === '404' && has404) sfc = await loadSfc('404', notFoundUrl)
+      if (sfc) buildPageComponent(name, sfc, file)
       if (isStale()) return  // 라우터가 취소 처리한다
+
+      // 인증 가드 — 보호 페이지는 컴포넌트·레이아웃을 받기 전에 돌려보낸다
+      if (authGuard.isEnabled() && authCache.get(name) && !authGuard.isAuthenticated()) {
+        const loginPage = authGuard.getLoginPage()
+        if (router.resolve(loginPage).path !== to.path) {
+          progress.done()
+          return loginPage
+        }
+        // 로그인 페이지 자신이 보호 상태면 리다이렉트가 끝없이 반복된다 — 공개로 취급해 끊는다
+        if (name === '404') {
+          report({ code: 'E_LOGIN_PAGE_MISSING', stage: 'auth', file: `${pagesDir}/pages.json`, message: `loginPage "${loginPage}" matches no page — redirect loop`, hint: `Add a login page to pages.json with auth: false (404 treated as public meanwhile)` })
+        } else {
+          report({ code: 'E_LOGIN_PAGE_PROTECTED', stage: 'auth', file, message: `loginPage "${loginPage}" is a protected page — redirect loop`, hint: `${file} 에 auth: false 를 추가 (export default { auth: false }); treated as public meanwhile` })
+        }
+        authCache.set(name, false)
+      }
+
+      // 페이지 템플릿이 쓰는 컴포넌트 미리 받기
+      if (sfc) await componentLoader.preload(sfc.template)
+      if (isStale()) return
 
       // 레이아웃 로드
       const layoutName = layoutNameCache.get(name)
@@ -263,23 +321,18 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       // title
       const title = titleCache.get(name)
       if (title) document.title = title
-
-      // 인증 가드
-      if (authGuard.isEnabled() && authCache.get(name) && !authGuard.isAuthenticated()) {
-        progress.done()
-        return authGuard.getLoginPage()
-      }
     } catch (err) {
-      console.error(`[vue-zero] 페이지 로드 실패: ${to.fullPath}`, err)
+      reportCaught(err, { code: 'E_PAGE_LOAD', stage: 'load', file, message: 'page load failed', hint: `check ${file || to.path}` }, err instanceof VzError ? { message: `${err.diag.message} (route ${to.path})` } : undefined)
       if (isStale()) return
       if (hasErrorPage) {
         try {
           const errorSfc = await loadSfc('error', errorUrl)
+          await componentLoader.preload(errorSfc.template)
           if (isStale()) return
-          currentError.value = buildPageComponent('error', errorSfc)
+          currentError.value = buildPageComponent('error', errorSfc, errorUrl)
           styleInjector.switchPage('page-error')
         } catch (errorPageErr) {
-          console.error('[vue-zero] error.vue 로드 실패', errorPageErr)
+          reportCaught(errorPageErr, { code: 'E_ERROR_PAGE', stage: 'load', file: errorUrl, message: 'error.vue load failed', hint: `check ${errorUrl}` })
         }
       }
       progress.done()
@@ -287,14 +340,20 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     }
   })
 
-  router.afterEach((_to, _from, failure) => {
+  router.afterEach((to, _from, failure) => {
     // 취소된 이동이 늦게 끝나도 최신 이동의 진행 바를 끝내지 않는다
     if (failure && VueRouter.isNavigationFailure(failure, VueRouter.NavigationFailureType.cancelled)) return
+    // 실패 화면이 떠 있는 채로 현재 URL 로 다시 이동하면(duplicated) beforeEach 가 돌지 않으므로 여기서 실패 화면을 걷는다
+    if (failure && VueRouter.isNavigationFailure(failure, VueRouter.NavigationFailureType.duplicated) && currentError.value) {
+      currentError.value = null
+      styleInjector.switchPage(`page-${String(to.name)}`)
+    }
     progress.done()
   })
 
   router.onError((err) => {
-    console.error('[vue-zero] navigation error:', err)
+    if (err instanceof VzError && err.reported) return
+    report({ code: 'E_ROUTE', stage: 'route', file: '', message: `navigation error: ${err instanceof Error ? err.message : String(err)}`, hint: 'exception during navigation; check page scripts' })
   })
 
   // 8. LayoutWrapper + 앱 마운트
@@ -317,8 +376,29 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   app.use(router)
 
   app.config.errorHandler = (err, instance, info) => {
-    console.error(`[vue-zero] runtime error (${info}):`, err)
+    if (err instanceof VzError && err.reported) return
+    const file = fileOf(instance)
+    const msg = err instanceof Error ? err.message : String(err)
+    // prod 빌드의 info 는 'https://vuejs.org/error-reference/#runtime-<번호>' 형태다
+    const num = /#runtime-(\d+)/.exec(info)
+    const where = num ? (VUE_ERROR_INFO[Number(num[1])] ?? info) : info
+    const isRender = /render/i.test(where)
+    report({
+      code: isRender ? 'E_RENDER' : 'E_RUNTIME',
+      stage: 'render',
+      file,
+      line: lineFromStack(err, file),
+      message: `${msg} (${where})`,
+      hint: isRender ? 'template uses an undefined/null data, computed or prop' : 'see file:line in the stack',
+    }, 'error', err)
   }
+
+  // dev 빌드의 Vue 경고도 파일명과 함께 버퍼에 담는다 (prod 빌드에서는 호출되지 않는다)
+  app.config.warnHandler = (msg, instance) => {
+    report({ code: 'E_VUE_WARN', stage: 'render', file: fileOf(instance), message: msg, hint: 'check the component template/props/registration' }, 'warn')
+  }
+
+  hintDevBuild()
 
   Object.entries(globalComponents).forEach(([name, comp]) => {
     app.component(name, comp as Parameters<typeof app.component>[1])

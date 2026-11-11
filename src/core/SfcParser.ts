@@ -1,4 +1,5 @@
 import { StyleInjector } from '../utils/StyleInjector'
+import { VzError, report, type Diag } from './Diagnostics'
 
 export type StyleScope = 'page' | 'component' | 'layout'
 
@@ -18,8 +19,10 @@ export function getStyleInjector(): StyleInjector {
 // 각 블록을 소스 전체에서 독립적으로 탐색하므로 순서에 무관하다.
 // 첫 번째로 발견된 블록만 사용하고 이후 중복은 무시한다.
 // template만 깊이 카운팅으로 중첩 태그를 처리한다.
-function parseSfcBlocks(source: string): Record<string, string> {
-  const result: Record<string, string> = { template: '', script: '', style: '' }
+interface Blocks { template: string; script: string; scriptLine: number; scriptAttrs: string; style: string; styleAttrs: string }
+
+function parseSfcBlocks(source: string): Blocks {
+  const result: Blocks = { template: '', script: '', scriptLine: 0, scriptAttrs: '', style: '', styleAttrs: '' }
 
   // template — 깊이 카운팅으로 중첩 처리
   const tmplOpen = /<template(\s[^>]*)?>/.exec(source)
@@ -53,7 +56,12 @@ function parseSfcBlocks(source: string): Record<string, string> {
   if (scriptOpen) {
     const contentStart = scriptOpen.index + scriptOpen[0].length
     const closeIdx = source.indexOf('</script>', contentStart)
-    if (closeIdx !== -1) result.script = source.slice(contentStart, closeIdx).trim()
+    if (closeIdx !== -1) {
+      // trim 하지 않는다 — 앞쪽 줄 수를 보존해야 런타임 스택의 줄 번호가 .vue 파일과 일치한다
+      result.script = source.slice(contentStart, closeIdx)
+      result.scriptLine = source.slice(0, contentStart).split('\n').length - 1
+      result.scriptAttrs = scriptOpen[1] ?? ''
+    }
   }
 
   // style — 소스 전체에서 첫 번째 블록만 사용
@@ -61,37 +69,76 @@ function parseSfcBlocks(source: string): Record<string, string> {
   if (styleOpen) {
     const contentStart = styleOpen.index + styleOpen[0].length
     const closeIdx = source.indexOf('</style>', contentStart)
-    if (closeIdx !== -1) result.style = source.slice(contentStart, closeIdx).trim()
+    if (closeIdx !== -1) {
+      result.style = source.slice(contentStart, closeIdx).trim()
+      result.styleAttrs = styleOpen[1] ?? ''
+    }
   }
 
   return result
 }
 
-async function evalScript(scriptStr: string): Promise<Record<string, unknown>> {
-  if (!scriptStr.trim()) return {}
-  const blob = new Blob([scriptStr], { type: 'text/javascript' })
-  const url = URL.createObjectURL(blob)
+const SETUP_HINT = 'No <script setup>/Composition API/import. Use <script>export default { data(), methods, ... }</script> (Options API); Vue is global'
+const IMPORT_HINT = 'import is impossible in .vue scripts (run as Blob URL). Remove it; call shared code via globals (window)'
+
+function classifyEval(msg: string, attrs: string, file: string, isSyntax: boolean): Diag {
+  const base = { stage: 'eval' as const, file }
+  const spec = /Failed to resolve module specifier ["']([^"']+)["']/.exec(msg)
+  const text = `script eval failed: ${msg}`
+  if (/Invalid relative url/i.test(msg) || (spec && /^\.{0,2}\//.test(spec[1]))) return { ...base, code: 'E_RELATIVE_IMPORT', message: text, hint: IMPORT_HINT }
+  if ((spec && spec[1] === 'vue') || /\bsetup\b/.test(attrs)) return { ...base, code: 'E_SCRIPT_SETUP', message: text, hint: SETUP_HINT }
+  if (spec) return { ...base, code: 'E_RELATIVE_IMPORT', message: text, hint: IMPORT_HINT }
+  if (/lang\s*=\s*["']?tsx?\b/.test(attrs) && isSyntax) {
+    return { ...base, code: 'E_SCRIPT_TS', message: text, hint: 'TypeScript is not supported. Remove lang="ts" and type annotations' }
+  }
+  return { ...base, code: 'E_SCRIPT_EVAL', message: text, hint: 'Syntax or top-level error in <script>; it must be a plain export default { ... } object' }
+}
+
+async function evalScript(raw: string, line: number, attrs: string, file: string): Promise<Record<string, unknown>> {
+  if (!raw.trim()) return {}
+  // 앞쪽 줄 수만큼 \n 을 채우고 sourceURL 을 달아 스택이 `/pages/foo.vue:<실제 줄>:<열>` 로 나오게 한다
+  const code = '\n'.repeat(line) + raw + '\n//# sourceURL=' + file
+  const url = URL.createObjectURL(new Blob([code], { type: 'text/javascript' }))
+  let module: { default?: Record<string, unknown> }
   try {
-    const module = await import(/* @vite-ignore */ url)
-    return module.default ?? {}
+    module = await import(/* @vite-ignore */ url)
   } catch (e) {
-    throw new Error(`[vue-zero] script eval failed: ${(e as Error).message}`)
+    throw new VzError(classifyEval(e instanceof Error ? e.message : String(e), attrs, file, e instanceof SyntaxError))
   } finally {
     URL.revokeObjectURL(url)
   }
+  if (module.default === undefined && /\bsetup\b/.test(attrs)) {
+    throw new VzError({ code: 'E_SCRIPT_SETUP', stage: 'eval', file, message: '<script setup> has no export default; component is empty', hint: SETUP_HINT })
+  }
+  return module.default ?? {}
 }
 
 export async function parseSfc(url: string, scopeId: string, scope: StyleScope = 'component'): Promise<SfcBlock> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`[vue-zero] failed to fetch ${url} (${res.status})`)
+  const code = scope === 'page' ? 'E_PAGE_FETCH' : scope === 'layout' ? 'E_LAYOUT_FETCH' : 'E_COMPONENT_FETCH'
+  const fetchDiag = (message: string, hint: string): Diag => ({ code, stage: 'load', file: url, message, hint })
+  let res: Response
+  try {
+    res = await fetch(url)
+  } catch {
+    throw new VzError(fetchDiag('network error while fetching', 'check server connection and path'))
+  }
+  if (!res.ok) {
+    throw new VzError(
+      fetchDiag(`failed to fetch (HTTP ${res.status})`, res.status === 404 ? `${url} is missing or does not match pages.json/components.json` : 'server error response'),
+      res.status,
+    )
+  }
   const source = await res.text()
 
   const blocks = parseSfcBlocks(source)
   const template = blocks.template
-  const scriptStr = blocks.script
   const style = blocks.style
 
-  const componentOptions = await evalScript(scriptStr)
+  if (/\bscoped\b/.test(blocks.styleAttrs)) {
+    report({ code: 'E_STYLE_SCOPED', stage: 'parse', file: url, message: '<style scoped> is not supported; styles apply globally', hint: 'Remove scoped; use unique class names' }, 'warn')
+  }
+
+  const componentOptions = await evalScript(blocks.script, blocks.scriptLine, blocks.scriptAttrs, url)
 
   if (style) {
     styleInjector.inject(style, scopeId, scope)

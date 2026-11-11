@@ -1,3 +1,20 @@
+import { report } from './Diagnostics'
+
+// 페이지 파일명(= 컴포넌트 이름)으로 쓸 수 없는 HTML 예약 태그
+export const HTML_RESERVED = new Set([
+  'html','body','head','base','meta','link','style','script','noscript',
+  'template','slot','component',
+  'div','span','p','a','br','hr','img','input','button','select','option',
+  'textarea','form','label','fieldset','legend','table','thead','tbody',
+  'tfoot','tr','th','td','caption','colgroup','col',
+  'ul','ol','li','dl','dt','dd',
+  'h1','h2','h3','h4','h5','h6',
+  'header','footer','main','nav','section','article','aside',
+  'details','summary','dialog','figure','figcaption',
+  'video','audio','source','canvas','svg','iframe','embed','object',
+  'pre','code','blockquote','strong','em','small','sub','sup','mark',
+])
+
 export interface RouteRecord {
   path: string
   filePath: string  // e.g. /pages/users/[id].vue
@@ -30,12 +47,19 @@ export class RouteScanner {
       const list: string[] = await res.json()
       list.forEach(entry => {
         if (entry.endsWith('.vue')) {
-          console.error(`[vue-zero] pages.json entry should not include ".vue" extension (got: "${entry}"). Use "${entry.replace(/\.vue$/, '')}"`)
+          report({ code: 'E_MANIFEST_ENTRY', stage: 'manifest', file: manifestUrl, message: `pages.json entry should not include ".vue" extension (got: "${entry}")`, hint: `Use "${entry.replace(/\.vue$/, '')}"` })
         }
       })
-      return list.map(f => this.fileToRoute(f))
+      const records = list.map(f => this.fileToRoute(f))
+      // 시작 시 전체 검사 — 방문하지 않은 페이지도 잡는다
+      records.forEach(r => {
+        if (HTML_RESERVED.has(r.name)) {
+          report({ code: 'E_RESERVED_TAG', stage: 'manifest', file: r.filePath, message: `page file name "${r.name}" conflicts with an HTML reserved tag`, hint: `Rename ${r.filePath} and its pages.json entry (e.g. ${r.name}-page)` })
+        }
+      })
+      return records
     } catch (e) {
-      console.warn(`[vue-zero] pages.json not found at ${manifestUrl}. Create it: ["index", "about", ...]`)
+      report({ code: 'E_MANIFEST_MISSING', stage: 'manifest', file: manifestUrl, message: `pages.json not found at ${manifestUrl}`, hint: 'Create it: ["index", "about", ...]' }, 'warn')
       return []
     }
   }

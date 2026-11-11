@@ -92,3 +92,28 @@ export async function installClockSkew(page) {
     Date.now = () => real() + window.__skewMs
   })
 }
+
+/** console 메시지(JSHandle 인자 포함)를 모두 수집한다 — Error 인자의 스택 확인용 */
+export function collectMessages(page) {
+  const all = []
+  page.on('console', (m) => all.push(m))
+  return all
+}
+
+/** 앱이 쌓은 진단 버퍼 (VueZero.errors()) */
+export const vzErrors = (page) => page.evaluate(() => window.VueZero.errors())
+
+/** `.vue` 파일(test/apps/<app>/<rel>)에서 `needle` 이 있는 줄 번호(1-based) */
+export async function lineOf(app, rel, needle) {
+  const { readFileSync } = await import('node:fs')
+  const src = readFileSync(new URL(`../apps/${app}/${rel}`, import.meta.url), 'utf8').split('\n')
+  const i = src.findIndex((l) => l.includes(needle))
+  if (i < 0) throw new Error(`${needle} not found in ${rel}`)
+  return i + 1
+}
+
+/** spaPush 와 달리 이동 완료를 기다리지 않는다 (게이트로 붙잡힌 이동 시작용) */
+export async function spaStart(page, path) {
+  await page.locator('#app[data-v-app]').waitFor({ state: 'attached' })
+  await page.evaluate((p) => { document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(p).catch(() => {}) }, path)
+}
