@@ -111,14 +111,11 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
 
   const notFoundUrl = `${pagesDir}/404.vue`
   const errorUrl = `${pagesDir}/error.vue`
-  const exists = (url: string) => fetch(url).then(r => r.ok, () => false)
 
-  // 1. components.json + pages.json + 404/error 존재 확인 병렬 fetch
-  const [compNames, records, has404, hasErrorPage] = await Promise.all([
+  // 1. components.json + pages.json 병렬 fetch (404.vue/error.vue 는 필요할 때 처음 받는다)
+  const [compNames, records] = await Promise.all([
     componentLoader.readManifest(),
     routeScanner.scan(),
-    exists(notFoundUrl),
-    exists(errorUrl),
   ])
 
   // 2. 전역 컴포넌트 등록 (지연 로딩 — 여기서는 fetch하지 않음)
@@ -151,6 +148,24 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       sfcInflight.set(name, pending)
     }
     return pending
+  }
+
+  // 404.vue/error.vue 는 처음 필요할 때 받는다. 파일이 없다(404)는 사실만 캐시해 다시 요청하지 않는다
+  let notFoundAbsent = false
+  let errorPageAbsent = false
+  async function loadSpecial(name: '404' | 'error') {
+    if (name === '404' ? notFoundAbsent : errorPageAbsent) return null
+    const url = name === '404' ? notFoundUrl : errorUrl
+    try {
+      return await loadSfc(name, url)
+    } catch (e) {
+      if (!(e instanceof VzError && e.status === 404)) throw e
+      if (name === '404') {
+        notFoundAbsent = true
+        report({ code: 'E_NOT_FOUND_PAGE', stage: 'load', file: url, message: '404.vue not found — unmatched URLs render an empty page', hint: `create ${url} (optional)` }, 'warn')
+      } else errorPageAbsent = true
+      return null
+    }
   }
 
   function buildPageComponent(
@@ -233,16 +248,14 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     },
   }))
 
-  if (has404) {
-    routes.push({
-      path: '/:pathMatch(.*)*',
-      name: '404',
-      component: async () => {
-        const sfc = await loadSfc('404', notFoundUrl)
-        return buildPageComponent('404', sfc, notFoundUrl)
-      },
-    })
-  }
+  routes.push({
+    path: '/:pathMatch(.*)*',
+    name: '404',
+    component: async () => {
+      const sfc = await loadSpecial('404')
+      return sfc ? buildPageComponent('404', sfc, notFoundUrl) : { render: () => null }
+    },
+  })
 
   // 6. 라우터 생성
   const router = VueRouter.createRouter({
@@ -277,7 +290,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       // 페이지 SFC 로드(파싱까지) + 컴포넌트 빌드
       let sfc: Awaited<ReturnType<typeof parseSfc>> | undefined
       if (record) sfc = await loadSfc(record.name, record.filePath)
-      else if (name === '404' && has404) sfc = await loadSfc('404', notFoundUrl)
+      else if (name === '404') sfc = (await loadSpecial('404')) ?? undefined
       if (sfc) buildPageComponent(name, sfc, file)
       if (isStale()) return  // 라우터가 취소 처리한다
 
@@ -322,16 +335,16 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     } catch (err) {
       reportCaught(err, { code: 'E_PAGE_LOAD', stage: 'load', file, message: 'page load failed', hint: `check ${file || to.path}` }, err instanceof VzError ? { message: `${err.diag.message} (route ${to.path})` } : undefined)
       if (isStale()) return
-      if (hasErrorPage) {
-        try {
-          const errorSfc = await loadSfc('error', errorUrl)
+      try {
+        const errorSfc = await loadSpecial('error')
+        if (errorSfc) {
           await componentLoader.preload(errorSfc.template)
           if (isStale()) return
           currentError.value = buildPageComponent('error', errorSfc, errorUrl)
           styleInjector.switchPage('page-error')
-        } catch (errorPageErr) {
-          reportCaught(errorPageErr, { code: 'E_ERROR_PAGE', stage: 'load', file: errorUrl, message: 'error.vue load failed', hint: `check ${errorUrl}` })
         }
+      } catch (errorPageErr) {
+        reportCaught(errorPageErr, { code: 'E_ERROR_PAGE', stage: 'load', file: errorUrl, message: 'error.vue load failed', hint: `check ${errorUrl}` })
       }
       progress.done()
       return false

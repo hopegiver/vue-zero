@@ -175,6 +175,7 @@ Source: **runtime** = reported by `VueZero` in the browser, **doctor** = reporte
 | `E_PAGE_FETCH` / `E_LAYOUT_FETCH` / `E_COMPONENT_FETCH` | runtime | error | load | `.vue` fetch failed (HTTP status or network). 404: file missing or not in `pages.json`/`components.json` |
 | `E_PAGE_LOAD`, `E_COMPONENT_LOAD`, `E_ERROR_PAGE` | runtime | error | load | Other failure while loading a page / component / `error.vue` |
 | `E_LAYOUT_NOT_FOUND` | runtime | warn | load | Layout file is 404: the page renders without a layout (only 404 is cached; 5xx/network errors are retried on the next navigation) |
+| `E_NOT_FOUND_PAGE` | runtime | warn | load | An unmatched URL was visited but `pages/404.vue` is missing (404): an empty page is rendered inside the layout. Reported once; the absence is cached. `404.vue` and `error.vue` are fetched only when first needed, not at startup |
 | `E_RENDER` | runtime | error | render | Template render threw (undefined/null data, computed or prop) |
 | `E_RUNTIME` | runtime | error | render | Hook / method / event handler / watcher threw. See `file:line` |
 | `E_VUE_WARN` | runtime | warn | render | Vue development-build warning (needs `vue.global.js`, not `.prod.js`) |
