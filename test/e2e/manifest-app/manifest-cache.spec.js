@@ -92,9 +92,12 @@ test('v1.5.0 유휴 정리: 현재 매니페스트에 없는 옛 항목과 다�
   }, v)
   await page.goto(PROD + '/no/such/page')
   await expect(page.getByTestId('not-found')).toBeVisible()
-  await expect.poll(async () => Object.keys(await cacheDump(page)).sort()).toEqual(['my-own-cache', `vue-zero-${v}`].sort())
+  // sweep 은 (1) 다른 버전 캐시 삭제 → (2) 현재 캐시의 옛 항목 삭제 순서로 비동기 진행한다. 이름만 맞는 시점은 (2) 의 도중일 수 있으니 항목까지 기다린다.
+  // (1) 은 caches.keys() 만 본다 — cacheDump 의 caches.open(n)은 sweep 이 막 지운 캐시를 빈 채로 되살린다.
+  await expect.poll(() => page.evaluate(async () => (await caches.keys()).sort())).toEqual(['my-own-cache', `vue-zero-${v}`].sort())
+  await expect.poll(async () => ((await cacheDump(page))[`vue-zero-${v}`] || []).filter((k) => k.includes('Gone.vue') || k.includes('00000000aa'))).toEqual([])
   const dump = await cacheDump(page)
-  const cur = Object.entries(dump).find(([n]) => n.startsWith('vue-zero-'))[1]
+  const cur = dump[`vue-zero-${v}`]
   expect(cur).not.toContain('/components/Gone.vue?v=0000000000')
   expect(cur).not.toContain('/pages/index.vue?v=00000000aa')
   expect(cur).toContain('/other/keep.js?v=1')
