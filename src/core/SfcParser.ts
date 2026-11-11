@@ -11,6 +11,9 @@ export interface SfcBlock {
 
 const styleInjector = new StyleInjector()
 
+/** .vue 소스를 받는 함수. manifest 영속 캐시가 켜지면 createApp 이 교체한다. */
+export const net = { get: (url: string): Promise<Response> => fetch(url) }
+
 export function getStyleInjector(): StyleInjector {
   return styleInjector
 }
@@ -119,7 +122,7 @@ export async function parseSfc(url: string, scopeId: string, scope: StyleScope =
   const fetchDiag = (message: string, hint: string): Diag => ({ code, stage: 'load', file: url, message, hint })
   let res: Response
   try {
-    res = await fetch(url)
+    res = await net.get(url)
   } catch {
     throw new VzError(fetchDiag('network error while fetching', 'check server connection and path'))
   }

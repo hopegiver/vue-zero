@@ -38,6 +38,7 @@ package/
 │   │   ├── SfcParser.ts         # .vue 파일 fetch → template/script/style 분리
 │   │   ├── RouteScanner.ts      # pages/ 스캔 → 라우트 자동 등록
 │   │   ├── ComponentLoader.ts   # components/ 스캔 → 전역 컴포넌트 자동 등록
+│   │   ├── Manifest.ts          # vz-manifest.json 로드(E_MANIFEST_FETCH 폴백) + Cache Storage 영속 캐시(옵트인)
 │   │   ├── AuthGuard.ts         # JWT 기반 경량 인증 가드
 │   │   └── Diagnostics.ts       # report() · VueZero.errors() 링 버퍼 · VzError (구조화 에러)
 │   └── utils/
@@ -75,12 +76,12 @@ pnpm test:basic  # basic 앱만
 test/
 ├── server.mjs              # 정적 서버(SPA fallback) + 픽스처 API(/api/login, /api/token, /api/me, /api/slow, /api/status/:code). HEAD 는 405
 ├── jwt.mjs                 # 테스트용 HS256 JWT (서버·e2e 공유)
-├── playwright.config.js    # 앱별 project + webServer (포트 4101~4104)
+├── playwright.config.js    # 앱별 project + webServer (포트 4101~4105)
 ├── scripts/gen-stress.mjs  # stress 앱 컴포넌트 300개 생성 (생성물은 .gitignore)
 ├── scripts/gen-manifest.mjs # vz-manifest.json 형식 v1 테스트 전용 생성기 (참조 구현은 template/bin/scan.js). 명세: docs/architecture/manifest-format.md
 ├── fixtures/manifest-golden/ # 골든 픽스처(app/ + expected/). template/tests/fixtures/manifest-golden 과 바이트 동일해야 한다
-├── apps/{basic,auth,custom-dirs,stress}/   # 각 앱의 index.html 은 window.__VZ_OPTIONS__ 를 createApp 옵션으로 쓴다
-└── e2e/{basic,auth,custom-dirs,stress}/*.spec.js, e2e/manifest/golden.spec.js(브라우저 없는 Node 테스트, project `manifest`), e2e/helpers.js
+├── apps/{basic,auth,custom-dirs,stress,manifest-app}/   # 각 앱의 index.html 은 window.__VZ_OPTIONS__ 를 createApp 옵션으로 쓴다. manifest-app 의 vz-manifest.json/pages.json/components.json 은 webServer 가 서버 시작 전에 gen-manifest.mjs 로 만든다(.gitignore)
+└── e2e/{basic,auth,custom-dirs,stress,manifest-app}/*.spec.js, e2e/manifest/golden.spec.js(브라우저 없는 Node 테스트, project `manifest`), e2e/helpers.js
 ```
 
 - **AI/개발 중에는 `pnpm check` 를 쓴다.** 성공 1줄, 실패는 `파일:줄 + 오류 요약(기대/실제 diff 포함)`만 나온다(전체는 `test/.results/last.json`). 직접 실행은 `node scripts/check.mjs`(pnpm 12 는 `-s` 옵션 없음). 같은 실패를 `pnpm test`(list)로 보면 수천 줄·70KB 이므로 상세가 꼭 필요할 때만 쓴다.
@@ -90,6 +91,7 @@ test/
 - 알려진 라이브러리 버그를 재현만 해 두고 아직 고치지 않는 경우 `test.fixme(!process.env.VZ_RUN_FIXME, '사유')` 로 남기고 `VZ_RUN_FIXME=1` 로 실행해 재현한다. 현재 fixme 없음 (v1.3.1 에서 "빠른 연속 이동" 레이스 수정).
 - 테스트 검증력 확인(변이): `VUEZERO_DIST` 에 과거 릴리스의 dist 를 넣어(`git show <커밋>:dist/vue-zero.js > /tmp/x.js`) 회귀 테스트가 실제로 실패하는지 본다. 예: v1.2.0 dist 는 지연 로딩/base64url 테스트가, v1.1.3 dist 는 isReady 회귀가 실패해야 한다.
 - 앱별 옵션은 `useOptions(page, {...})`(addInitScript)로 주입하고, 토큰은 `seedStorage`로 주입한다. 네트워크 실패/지연은 `page.route` 와 `gate()`(수동 해제)로 만든다. 고정 sleep 금지 — 상태를 기다린다(`settle()`은 프레임만 흘려보낸다).
+- 영속 캐시(Cache Storage)는 dev 호스트(127.0.0.1)에서 꺼지므로 `manifest-app` 의 캐시 테스트는 `serveAsProd(context, baseURL)`(helpers.js)로 가짜 https 출처 `PROD` 를 로컬 서버로 중계해 prod 호스트를 흉내 낸다. 동시 요청 증명은 `barrier()`(N건이 모두 도착해야 응답을 푼다)로, 인증 순서는 SFC 응답을 붙잡은 채 요청 목록으로 단언한다. 스펙: `manifest-boot`(옵트인·폴백·deps), `manifest-cache`(적중/미적중/해시 변경/정리/폴백), `manifest-auth`(미인증에게 deps 선행 금지).
 - 진단 테스트: `e2e/basic/diagnostics.spec.js`(코드·버퍼·sourceURL 줄 정렬·dev 경고), `e2e/basic/loading.spec.js`(in-flight 병합·레이아웃 캐시), `e2e/auth/login-guard.spec.js`(loginPage 루프·인증 순서). 앱 안의 오류 재현 픽스처는 `test/apps/basic/pages/err-*.vue`, `layouts/boom.vue`, `components/Boom.vue`. 앱에 쌓인 보고는 `helpers.js`의 `vzErrors(page)`(=`VueZero.errors()`)로 읽고, 콘솔 메시지의 Error 인자 스택은 `collectMessages(page)`로 본다. 게이트로 붙잡힌 이동은 `spaStart`(완료를 기다리지 않음)로 시작한다.
 - `pnpm build` 는 `../template/app/assets/js/` 로 dist 를 복사한다. 다른 저장소를 건드리지 않으려면 `VZ_NO_TEMPLATE_COPY=1 pnpm build`(check 도 동일).
 - 테스트 앱 코드도 vue-zero 규칙(Options API, scoped 금지, import 없음)을 따른다.

@@ -16,3 +16,8 @@ bench/nuxt-app/.output/
 bench/nuxt-app/app/
 bench/nuxt-app/dist/
 bench/nuxt-app/dist
+
+# manifest-app 앱: 생성기가 서버 시작 전에 만든다 (playwright.config.js webServer)
+test/apps/manifest-app/vz-manifest.json
+test/apps/manifest-app/pages/pages.json
+test/apps/manifest-app/components/components.json

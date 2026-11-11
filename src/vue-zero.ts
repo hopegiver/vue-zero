@@ -1,7 +1,8 @@
 import { RouteScanner } from './core/RouteScanner'
 import { ComponentLoader } from './core/ComponentLoader'
 import { AuthGuard } from './core/AuthGuard'
-import { parseSfc, getStyleInjector } from './core/SfcParser'
+import { parseSfc, getStyleInjector, net } from './core/SfcParser'
+import { loadManifest, createPersistentCache, isDevHost } from './core/Manifest'
 import { report, reportCaught, errors as diagErrors, VzError } from './core/Diagnostics'
 
 declare const Vue: typeof import('vue')
@@ -17,6 +18,8 @@ export interface CreateAppOptions {
   pagesDir?: string
   componentsDir?: string
   layoutsDir?: string
+  /** true 또는 매니페스트 경로 — vz-manifest.json 을 쓴다(기본 off) */
+  manifest?: boolean | string
   auth?: {
     enabled?: boolean
     loginPage?: string
@@ -112,11 +115,29 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const notFoundUrl = `${pagesDir}/404.vue`
   const errorUrl = `${pagesDir}/error.vue`
 
-  // 1. components.json + pages.json 병렬 fetch (404.vue/error.vue 는 필요할 때 처음 받는다)
-  const [compNames, records] = await Promise.all([
-    componentLoader.readManifest(),
-    routeScanner.scan(),
-  ])
+  // 1. 매니페스트(옵트인, 항상 재검증) 또는 components.json + pages.json 병렬 fetch (404.vue/error.vue 는 필요할 때 처음 받는다)
+  const manifestUrl = typeof options.manifest === 'string' ? options.manifest : baseDir + '/vz-manifest.json'
+  const manifest = options.manifest ? await loadManifest(manifestUrl) : null
+  const [compNames, records] = manifest
+    ? [manifest.components, routeScanner.toRecords(manifest.pages, manifestUrl)]
+    : await Promise.all([componentLoader.readManifest(), routeScanner.scan()])
+
+  // 매니페스트 files/deps 의 키(pages/x.vue, components/X.vue, layouts/y.vue)를 실제 요청 URL 로 바꾼다
+  const dirOf: Record<string, string> = { pages: pagesDir, components: componentsDir, layouts: layoutsDir }
+  const urlOf = (key: string) => {
+    const m = /^(pages|components|layouts)(\/.+)$/.exec(key)
+    return m ? dirOf[m[1]] + m[2] : ''
+  }
+  const hashes = new Map<string, string>()
+  const depsOf = new Map<string, NonNullable<NonNullable<typeof manifest>['deps']>[string]>()
+  if (manifest) {
+    for (const [k, h] of Object.entries(manifest.files ?? {})) if (urlOf(k) && /^[\w-]{1,64}$/.test(h)) hashes.set(urlOf(k), h)
+    for (const [k, d] of Object.entries(manifest.deps ?? {})) if (urlOf(k) && d) depsOf.set(urlOf(k), d)
+  }
+  // 영속 캐시: prod 호스트 + Cache Storage 지원일 때만 (dev 는 파일이 수시로 바뀌므로 해시를 쓰지 않는다)
+  const persist = hashes.size && !isDevHost() && typeof caches !== 'undefined'
+    ? createPersistentCache(hashes, [pagesDir, componentsDir, layoutsDir], __VZ_VERSION__) : null
+  if (persist) net.get = persist.get
 
   // 2. 전역 컴포넌트 등록 (지연 로딩 — 여기서는 fetch하지 않음)
   const globalComponents = componentLoader.createAsyncComponents(compNames)
@@ -238,6 +259,14 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     }
   }
 
+  // 매니페스트 deps 힌트: 페이지 SFC 와 레이아웃·의존 컴포넌트를 동시에 요청 시작한다 (틀려도 정규 경로가 그대로 동작)
+  function startDeps(file: string) {
+    const d = depsOf.get(file)
+    if (!d) return
+    if (typeof d.layout === 'string') loadLayoutComponent(d.layout)
+    if (Array.isArray(d.components)) componentLoader.prefetch(d.components)
+  }
+
   // 5. 라우트 배열 생성
   const routes: import('vue-router').RouteRecordRaw[] = records.map(record => ({
     path: record.path,
@@ -286,6 +315,10 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     const record = recordByName.get(name)
     const file = record ? record.filePath : name === '404' ? notFoundUrl : ''
 
+    // 미인증 사용자에게는 인증 판단 전에 레이아웃·컴포넌트를 요청하지 않는다 (인증 판단은 SFC 의 auth 옵션을 읽어야 한다)
+    const early = !authGuard.isEnabled() || authGuard.isAuthenticated()
+    if (early) startDeps(file)
+
     try {
       // 페이지 SFC 로드(파싱까지) + 컴포넌트 빌드
       let sfc: Awaited<ReturnType<typeof parseSfc>> | undefined
@@ -308,6 +341,8 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
           else report({ code: 'E_LOGIN_PAGE_PROTECTED', stage: 'auth', file, message: `loginPage "${loginPage}" is a protected page — redirect loop`, hint: `add auth: false to ${file} (export default { auth: false }); it is treated as public meanwhile` })
         }
       }
+
+      if (!early) startDeps(file)
 
       // 페이지 템플릿이 쓰는 컴포넌트 미리 받기
       if (sfc) await componentLoader.preload(sfc.template)
@@ -415,4 +450,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
 
   await router.isReady().catch(() => {})
   app.mount('#app')
+  if (persist) {
+    const ric = (window as { requestIdleCallback?: (cb: () => void, o: { timeout: number }) => void }).requestIdleCallback
+    if (ric) ric(persist.sweep, { timeout: 1000 })
+    else setTimeout(persist.sweep, 1000)
+  }
 }

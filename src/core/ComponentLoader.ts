@@ -56,6 +56,14 @@ export class ComponentLoader {
     await Promise.allSettled(this.findUsed(template).map(name => this.preloadDeep(name, seen)))
   }
 
+  /** 매니페스트 deps 힌트: 이름 목록을 동시에 요청 시작한다(실패는 fetchOne 이 보고, 이동은 막지 않는다) */
+  prefetch(names: string[]): void {
+    for (const n of names) {
+      const name = this.lookup.get(String(n).replace(/-/g, '').toLowerCase())
+      if (name) this.load(name).catch(() => {})
+    }
+  }
+
   private findUsed(template: string): string[] {
     const used = new Set<string>()
     const tagRe = /<([A-Za-z][\w-]*)/g

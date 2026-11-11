@@ -44,24 +44,28 @@ export class RouteScanner {
     try {
       const res = await fetch(manifestUrl)
       if (!res.ok) throw new Error(`${res.status}`)
-      const list: string[] = await res.json()
-      list.forEach(entry => {
-        if (entry.endsWith('.vue')) {
-          report({ code: 'E_MANIFEST_ENTRY', stage: 'manifest', file: manifestUrl, message: `pages.json entry should not include ".vue" extension (got: "${entry}")`, hint: `Use "${entry.replace(/\.vue$/, '')}"` })
-        }
-      })
-      const records = list.map(f => this.fileToRoute(f))
-      // 시작 시 전체 검사 — 방문하지 않은 페이지도 잡는다
-      records.forEach(r => {
-        if (HTML_RESERVED.has(r.name)) {
-          report({ code: 'E_RESERVED_TAG', stage: 'manifest', file: r.filePath, message: `page file name "${r.name}" conflicts with an HTML reserved tag`, hint: `Rename ${r.filePath} and its pages.json entry (e.g. ${r.name}-page)` })
-        }
-      })
-      return records
+      return this.toRecords(await res.json(), manifestUrl)
     } catch (e) {
       report({ code: 'E_MANIFEST_MISSING', stage: 'manifest', file: manifestUrl, message: `pages.json not found at ${manifestUrl}`, hint: 'Create it: ["index", "about", ...]' }, 'warn')
       return []
     }
+  }
+
+  /** 페이지 이름 목록(pages.json 또는 vz-manifest.json 의 pages) → 라우트 + 시작 시 전체 검사 */
+  toRecords(list: string[], manifestUrl: string): RouteRecord[] {
+    list.forEach(entry => {
+      if (entry.endsWith('.vue')) {
+        report({ code: 'E_MANIFEST_ENTRY', stage: 'manifest', file: manifestUrl, message: `pages.json entry should not include ".vue" extension (got: "${entry}")`, hint: `Use "${entry.replace(/\.vue$/, '')}"` })
+      }
+    })
+    const records = list.map(f => this.fileToRoute(f))
+    // 시작 시 전체 검사 — 방문하지 않은 페이지도 잡는다
+    records.forEach(r => {
+      if (HTML_RESERVED.has(r.name)) {
+        report({ code: 'E_RESERVED_TAG', stage: 'manifest', file: r.filePath, message: `page file name "${r.name}" conflicts with an HTML reserved tag`, hint: `Rename ${r.filePath} and its pages.json entry (e.g. ${r.name}-page)` })
+      }
+    })
+    return records
   }
 
   private fileToRoute(file: string): RouteRecord {

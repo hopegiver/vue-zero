@@ -117,3 +117,54 @@ export async function spaStart(page, path) {
   await page.locator('#app[data-v-app]').waitFor({ state: 'attached' })
   await page.evaluate((p) => { document.querySelector('#app').__vue_app__.config.globalProperties.$router.push(p).catch(() => {}) }, path)
 }
+
+/** 테스트 서버(127.0.0.1)는 dev 호스트라 영속 캐시가 꺼진다. 같은 앱을 prod 호스트처럼 보이게 하는 가짜 https 출처. */
+export const PROD = 'https://app.example'
+
+/** `PROD` 로 가는 모든 요청을 baseURL(로컬 테스트 서버)로 중계한다 — https 라 Cache Storage 도 쓸 수 있다. 컨텍스트 단위라 같은 context 의 새 페이지도 적용된다. */
+export async function serveAsProd(context, baseURL) {
+  await context.route(`${PROD}/**`, async (route) => {
+    const u = new URL(route.request().url())
+    await route.fulfill({ response: await route.fetch({ url: baseURL + u.pathname + u.search }) })
+  })
+}
+
+/** `.vue` 요청만 [url...] (쿼리 포함) */
+export const vueReqs = (reqs) => reqs.map((r) => r.url).filter((u) => /\.vue(\?|$)/.test(u))
+
+/** 부팅 요청 중 .json (매니페스트·pages.json·components.json) */
+export const bootReqs = (reqs) => reqs.map((r) => r.url).filter((u) => /\.json(\?|$)/.test(u))
+
+/** 현재 출처의 Cache Storage 요약 { 캐시이름: [키...] } */
+export const cacheDump = (page) => page.evaluate(async () => {
+  const out = {}
+  for (const n of await caches.keys()) {
+    const c = await caches.open(n)
+    out[n] = (await c.keys()).map((r) => new URL(r.url).pathname + new URL(r.url).search).sort()
+  }
+  return out
+})
+
+/** 요청 N개가 모두 도착할 때까지 응답을 붙잡았다가 한꺼번에 푼다 — 모두 "동시에" 요청됐다는 결정적 증거(직렬이면 영원히 안 풀려 테스트가 실패한다). */
+export async function barrier(page, globs) {
+  const seen = new Set()
+  let open
+  const opened = new Promise((r) => { open = r })
+  for (const g of globs) {
+    await page.route(g, async (route) => {
+      seen.add(g)
+      if (seen.size === globs.length) open()
+      await opened
+      await route.fallback()
+    })
+  }
+  return { seen, opened }
+}
+
+/** 매니페스트 응답을 고쳐서 내려준다: edit(manifest) 로 객체를 수정. 원본은 생성기가 만든 파일(디스크)에서 읽는다 — prod 가짜 출처에서도 동작 */
+export async function editManifest(page, edit, glob = '**/vz-manifest.json') {
+  const { readFileSync } = await import('node:fs')
+  const m = JSON.parse(readFileSync(new URL('../apps/manifest-app/vz-manifest.json', import.meta.url), 'utf8'))
+  edit(m)
+  await page.route(glob, (route) => route.fulfill({ contentType: 'application/json', json: m }))
+}
