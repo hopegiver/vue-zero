@@ -1,0 +1,58 @@
+name: CI
+
+# main push / PR 마다 E2E를 실행한다. 릴리스 게이트(publish.yml)와 같은 pnpm·Node·Chromium 설정을 써서
+# 태그를 달기 전에 CI 환경에서의 설치·브라우저·테스트 호환성을 미리 확인한다. (publish 하지 않음)
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PNPM_VERSION: 10.26.0
+  NODE_VERSION: 22
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - name: Install Chromium
+        run: pnpm exec playwright install --with-deps chromium
+
+      # 커밋된 dist/vue-zero.js 를 검증한다 (소스를 고쳤다면 pnpm build 후 dist를 커밋해야 한다)
+      - run: pnpm test
+
+      - name: Upload Playwright traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: test/.results/
+          if-no-files-found: ignore
+          retention-days: 14
