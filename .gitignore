@@ -5,3 +5,14 @@ test/.results/
 test/apps/stress/pages/
 test/apps/stress/components/
 playwright-report/
+
+# bench (생성물/설치물)
+bench/apps/
+bench/build/
+bench/.cert/
+bench/nuxt-app/node_modules/
+bench/nuxt-app/.nuxt/
+bench/nuxt-app/.output/
+bench/nuxt-app/app/
+bench/nuxt-app/dist/
+bench/nuxt-app/dist

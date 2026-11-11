@@ -1,0 +1,22 @@
+{
+ "S": {
+  "nuxtGenerateMs": 4260,
+  "loadavg": 7.8974609375
+ },
+ "M": {
+  "nuxtGenerateMs": 2154,
+  "loadavg": 7.5849609375
+ },
+ "L": {
+  "nuxtGenerateMs": 3406,
+  "loadavg": 7.6982421875
+ },
+ "X60": {
+  "nuxtGenerateMs": 3283,
+  "loadavg": 8.59912109375
+ },
+ "X150": {
+  "nuxtGenerateMs": 3105,
+  "loadavg": 8.59912109375
+ }
+}

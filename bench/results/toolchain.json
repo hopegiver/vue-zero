@@ -1,0 +1,224 @@
+{
+ "loadavgStart": 8.25244140625,
+ "node": "v22.23.3",
+ "pnpm": "12.3.4",
+ "install": {
+  "coldStoreMs": 4156,
+  "coldOk": true,
+  "storeKB": 348468,
+  "nodeModulesKB": 177864,
+  "warmStoreMs": 468,
+  "nodeModulesFiles": 13305,
+  "vzForAppDeveloper": {
+   "installMs": 0,
+   "nodeModulesKB": 0,
+   "note": "앱 개발자는 설치 없음(vue/vue-router/vue-zero 를 <script> 로 로드)"
+  }
+ },
+ "generate": {
+  "S": {
+   "runsMs": [
+    3747,
+    1685,
+    1685
+   ],
+   "medianMs": 1685,
+   "vzBuildMs": 0
+  },
+  "M": {
+   "runsMs": [
+    2161,
+    2375,
+    2358
+   ],
+   "medianMs": 2358,
+   "vzBuildMs": 0
+  },
+  "L": {
+   "runsMs": [
+    3695,
+    3828,
+    3655
+   ],
+   "medianMs": 3695,
+   "vzBuildMs": 0
+  }
+ },
+ "libs": {
+  "vue.global.prod.js": {
+   "files": 1,
+   "rawBytes": 172939,
+   "brotliBytes": 60456
+  },
+  "vue-router.global.prod.js": {
+   "files": 1,
+   "rawBytes": 27401,
+   "brotliBytes": 9983
+  },
+  "vue-zero.js": {
+   "files": 1,
+   "rawBytes": 11279,
+   "brotliBytes": 4503
+  }
+ },
+ "output": {
+  "S": {
+   "vz": {
+    "app": {
+     "files": 24,
+     "rawBytes": 48816,
+     "brotliBytes": 17626
+    },
+    "libs": {
+     "files": 3,
+     "rawBytes": 211619,
+     "brotliBytes": 74942
+    },
+    "total": {
+     "files": 27,
+     "rawBytes": 260435,
+     "brotliBytes": 92568
+    },
+    "vueFiles": 21,
+    "configFiles": 0,
+    "otherFiles": [
+     "index.html",
+     "pages/pages.json",
+     "components/components.json"
+    ]
+   },
+   "nuxt": {
+    "out": {
+     "files": 63,
+     "rawBytes": 266756,
+     "brotliBytes": 101568
+    },
+    "jsCssChunks": 52,
+    "vueFiles": 22,
+    "configFiles": 4,
+    "otherFiles": [
+     "app.vue (vueFiles 에 포함)",
+     ".nuxt/ 생성 디렉터리(tsconfig 등)"
+    ]
+   }
+  },
+  "M": {
+   "vz": {
+    "app": {
+     "files": 154,
+     "rawBytes": 286156,
+     "brotliBytes": 108574
+    },
+    "libs": {
+     "files": 3,
+     "rawBytes": 211619,
+     "brotliBytes": 74942
+    },
+    "total": {
+     "files": 157,
+     "rawBytes": 497775,
+     "brotliBytes": 183516
+    },
+    "vueFiles": 151,
+    "configFiles": 0,
+    "otherFiles": [
+     "index.html",
+     "pages/pages.json",
+     "components/components.json"
+    ]
+   },
+   "nuxt": {
+    "out": {
+     "files": 291,
+     "rawBytes": 568693,
+     "brotliBytes": 226179
+    },
+    "jsCssChunks": 242,
+    "vueFiles": 152,
+    "configFiles": 4,
+    "otherFiles": [
+     "app.vue (vueFiles 에 포함)",
+     ".nuxt/ 생성 디렉터리(tsconfig 등)"
+    ]
+   }
+  },
+  "L": {
+   "vz": {
+    "app": {
+     "files": 454,
+     "rawBytes": 856144,
+     "brotliBytes": 324904
+    },
+    "libs": {
+     "files": 3,
+     "rawBytes": 211619,
+     "brotliBytes": 74942
+    },
+    "total": {
+     "files": 457,
+     "rawBytes": 1067763,
+     "brotliBytes": 399846
+    },
+    "vueFiles": 451,
+    "configFiles": 0,
+    "otherFiles": [
+     "index.html",
+     "pages/pages.json",
+     "components/components.json"
+    ]
+   },
+   "nuxt": {
+    "out": {
+     "files": 893,
+     "rawBytes": 1316995,
+     "brotliBytes": 543053
+    },
+    "jsCssChunks": 746,
+    "vueFiles": 452,
+    "configFiles": 4,
+    "otherFiles": [
+     "app.vue (vueFiles 에 포함)",
+     ".nuxt/ 생성 디렉터리(tsconfig 등)"
+    ]
+   }
+  }
+ },
+ "devServer": {
+  "vz": [
+   {
+    "portOpenMs": 124,
+    "firstHtmlOkMs": 174,
+    "log": "[bench-server] vz/cf/h1 /Users/hopegiver/workspace/vue-zero/package/bench/apps/M/vz http://127.0.0.1:5811\n"
+   },
+   {
+    "portOpenMs": 105,
+    "firstHtmlOkMs": 111,
+    "log": "[bench-server] vz/cf/h1 /Users/hopegiver/workspace/vue-zero/package/bench/apps/M/vz http://127.0.0.1:5811\n"
+   },
+   {
+    "portOpenMs": 105,
+    "firstHtmlOkMs": 110,
+    "log": "[bench-server] vz/cf/h1 /Users/hopegiver/workspace/vue-zero/package/bench/apps/M/vz http://127.0.0.1:5811\n"
+   }
+  ],
+  "nuxt": [
+   {
+    "portOpenMs": 155,
+    "firstHtmlOkMs": 1609,
+    "log": "5ms\n◆ Ready in 1.25s  → http://localhost:5812/\n  config 140ms · modules 17ms · app 203ms · types 200ms · bundle 133ms · server 564ms\n● Cleaning up...\n"
+   },
+   {
+    "portOpenMs": 157,
+    "firstHtmlOkMs": 2098,
+    "log": "9ms\n◆ Ready in 1.34s  → http://localhost:5812/\n  config 158ms · modules 19ms · app 202ms · types 169ms · bundle 147ms · server 651ms\n● Cleaning up...\n"
+   },
+   {
+    "portOpenMs": 156,
+    "firstHtmlOkMs": 1598,
+    "log": "5ms\n◆ Ready in 1.23s  → http://localhost:5812/\n  config 142ms · modules 19ms · app 210ms · types 170ms · bundle 149ms · server 545ms\n● Cleaning up...\n"
+   }
+  ],
+  "note": "vz = node 정적 서버(--h1) 포트 열림~첫 200. nuxt = `nuxt dev` 프로세스 시작~포트 열림/첫 HTML 200. nuxt dev 는 첫 페이지 요청 시 추가 컴파일(vite)이 일어나므로 화면 도달 시간은 더 길 수 있음(미측정)."
+ },
+ "loadavgEnd": 10.32275390625
+}

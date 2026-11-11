@@ -1,0 +1,336 @@
+{
+ "size": "M",
+ "rttMs": 150,
+ "gapMs": 75,
+ "note": "프로필 P3 네트워크(RTT150, 1.6Mbps) + CPU 1x. 웨이브 = 시작 시각 간격 > RTT/2 로 구분한 요청 군집(타이밍 기반 추론, 실제 의존 관계 아님)",
+ "variants": {
+  "vz": [
+   {
+    "readyMs": 1607,
+    "requests": 17,
+    "waves": 7,
+    "waveDetail": [
+     {
+      "startMs": 0,
+      "n": 1,
+      "sample": [
+       "/"
+      ]
+     },
+     {
+      "startMs": 188,
+      "n": 3,
+      "sample": [
+       "/lib/vue.js",
+       "/lib/vue-router.js",
+       "/lib/vue-zero.js"
+      ]
+     },
+     {
+      "startMs": 746,
+      "n": 4,
+      "sample": [
+       "/components/components.json",
+       "/pages/pages.json",
+       "/pages/404.vue",
+       "/pages/error.vue"
+      ]
+     },
+     {
+      "startMs": 934,
+      "n": 1,
+      "sample": [
+       "/pages/index.vue"
+      ]
+     },
+     {
+      "startMs": 1098,
+      "n": 4,
+      "sample": [
+       "/components/Comp000.vue",
+       "/components/Comp001.vue",
+       "/components/Comp002.vue",
+       "/components/Comp003.vue"
+      ]
+     },
+     {
+      "startMs": 1260,
+      "n": 3,
+      "sample": [
+       "/components/Comp043.vue",
+       "/components/Comp071.vue",
+       "/components/Comp074.vue"
+      ]
+     },
+     {
+      "startMs": 1434,
+      "n": 1,
+      "sample": [
+       "/layouts/default.vue"
+      ]
+     }
+    ]
+   },
+   {
+    "readyMs": 1571,
+    "requests": 17,
+    "waves": 7,
+    "waveDetail": [
+     {
+      "startMs": 0,
+      "n": 1,
+      "sample": [
+       "/"
+      ]
+     },
+     {
+      "startMs": 168,
+      "n": 3,
+      "sample": [
+       "/lib/vue.js",
+       "/lib/vue-router.js",
+       "/lib/vue-zero.js"
+      ]
+     },
+     {
+      "startMs": 716,
+      "n": 4,
+      "sample": [
+       "/components/components.json",
+       "/pages/pages.json",
+       "/pages/404.vue",
+       "/pages/error.vue"
+      ]
+     },
+     {
+      "startMs": 902,
+      "n": 1,
+      "sample": [
+       "/pages/index.vue"
+      ]
+     },
+     {
+      "startMs": 1067,
+      "n": 4,
+      "sample": [
+       "/components/Comp000.vue",
+       "/components/Comp001.vue",
+       "/components/Comp002.vue",
+       "/components/Comp003.vue"
+      ]
+     },
+     {
+      "startMs": 1223,
+      "n": 3,
+      "sample": [
+       "/components/Comp043.vue",
+       "/components/Comp071.vue",
+       "/components/Comp074.vue"
+      ]
+     },
+     {
+      "startMs": 1404,
+      "n": 1,
+      "sample": [
+       "/layouts/default.vue"
+      ]
+     }
+    ]
+   },
+   {
+    "readyMs": 1576,
+    "requests": 17,
+    "waves": 7,
+    "waveDetail": [
+     {
+      "startMs": 0,
+      "n": 1,
+      "sample": [
+       "/"
+      ]
+     },
+     {
+      "startMs": 168,
+      "n": 3,
+      "sample": [
+       "/lib/vue.js",
+       "/lib/vue-router.js",
+       "/lib/vue-zero.js"
+      ]
+     },
+     {
+      "startMs": 720,
+      "n": 4,
+      "sample": [
+       "/components/components.json",
+       "/pages/pages.json",
+       "/pages/404.vue",
+       "/pages/error.vue"
+      ]
+     },
+     {
+      "startMs": 906,
+      "n": 1,
+      "sample": [
+       "/pages/index.vue"
+      ]
+     },
+     {
+      "startMs": 1065,
+      "n": 4,
+      "sample": [
+       "/components/Comp000.vue",
+       "/components/Comp001.vue",
+       "/components/Comp002.vue",
+       "/components/Comp003.vue"
+      ]
+     },
+     {
+      "startMs": 1222,
+      "n": 3,
+      "sample": [
+       "/components/Comp043.vue",
+       "/components/Comp071.vue",
+       "/components/Comp074.vue"
+      ]
+     },
+     {
+      "startMs": 1403,
+      "n": 1,
+      "sample": [
+       "/layouts/default.vue"
+      ]
+     }
+    ]
+   }
+  ],
+  "nuxt": [
+   {
+    "readyMs": 1041,
+    "requests": 27,
+    "waves": 4,
+    "waveDetail": [
+     {
+      "startMs": 0,
+      "n": 1,
+      "sample": [
+       "/"
+      ]
+     },
+     {
+      "startMs": 165,
+      "n": 10,
+      "sample": [
+       "/_nuxt/7HkiZa9K.js",
+       "/_nuxt/yOs4NpFg.js",
+       "/_nuxt/DgA7Iut1.js",
+       "/_nuxt/default.i0wQsklx.css"
+      ]
+     },
+     {
+      "startMs": 756,
+      "n": 14,
+      "sample": [
+       "/_nuxt/CnsW4130.js",
+       "/_nuxt/DRJGRJod.js",
+       "/_nuxt/BOCh6e5K.js",
+       "/_nuxt/ehDl_HNl.js"
+      ]
+     },
+     {
+      "startMs": 1032,
+      "n": 2,
+      "sample": [
+       "/_nuxt/default.i0wQsklx.css",
+       "/_nuxt/DV5gGkMi.js"
+      ]
+     }
+    ]
+   },
+   {
+    "readyMs": 1029,
+    "requests": 27,
+    "waves": 4,
+    "waveDetail": [
+     {
+      "startMs": 0,
+      "n": 1,
+      "sample": [
+       "/"
+      ]
+     },
+     {
+      "startMs": 166,
+      "n": 10,
+      "sample": [
+       "/_nuxt/7HkiZa9K.js",
+       "/_nuxt/yOs4NpFg.js",
+       "/_nuxt/DgA7Iut1.js",
+       "/_nuxt/default.i0wQsklx.css"
+      ]
+     },
+     {
+      "startMs": 753,
+      "n": 14,
+      "sample": [
+       "/_nuxt/CnsW4130.js",
+       "/_nuxt/DRJGRJod.js",
+       "/_nuxt/BOCh6e5K.js",
+       "/_nuxt/ehDl_HNl.js"
+      ]
+     },
+     {
+      "startMs": 1022,
+      "n": 2,
+      "sample": [
+       "/_nuxt/default.i0wQsklx.css",
+       "/_nuxt/DV5gGkMi.js"
+      ]
+     }
+    ]
+   },
+   {
+    "readyMs": 1023,
+    "requests": 27,
+    "waves": 4,
+    "waveDetail": [
+     {
+      "startMs": 0,
+      "n": 1,
+      "sample": [
+       "/"
+      ]
+     },
+     {
+      "startMs": 159,
+      "n": 10,
+      "sample": [
+       "/_nuxt/7HkiZa9K.js",
+       "/_nuxt/yOs4NpFg.js",
+       "/_nuxt/DgA7Iut1.js",
+       "/_nuxt/default.i0wQsklx.css"
+      ]
+     },
+     {
+      "startMs": 746,
+      "n": 14,
+      "sample": [
+       "/_nuxt/CnsW4130.js",
+       "/_nuxt/DRJGRJod.js",
+       "/_nuxt/BOCh6e5K.js",
+       "/_nuxt/ehDl_HNl.js"
+      ]
+     },
+     {
+      "startMs": 1016,
+      "n": 2,
+      "sample": [
+       "/_nuxt/default.i0wQsklx.css",
+       "/_nuxt/DV5gGkMi.js"
+      ]
+     }
+    ]
+   }
+  ]
+ }
+}
