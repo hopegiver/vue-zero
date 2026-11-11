@@ -3,28 +3,28 @@
  "size": "M",
  "baseline": {
   "coldRequests": 15,
-  "coldBytes": 84218,
+  "coldBytes": 84501,
   "warmRequests": 15,
   "navComponentRequests": 50,
-  "vzBrotliBytes": 7767,
-  "vzRawBytes": 19668,
-  "libsBrotliBytes": 78206,
+  "vzBrotliBytes": 8026,
+  "vzRawBytes": 20142,
+  "libsBrotliBytes": 78465,
   "manifestColdRequests": 14,
   "manifestBootRequests": 5,
   "manifestWarmRequests": 5,
   "manifestColdWaves": 4,
   "manifestWarmWaves": 3,
-  "coldReadyMs": 46,
-  "navFirstMs": 48
+  "coldReadyMs": 39,
+  "navFirstMs": 64
  },
  "hard": {
   "coldRequests": 15,
-  "coldBytes": 96851,
+  "coldBytes": 97177,
   "warmRequests": 15,
   "navComponentRequests": 58,
-  "vzBrotliBytes": 8933,
-  "vzRawBytes": 22619,
-  "libsBrotliBytes": 89937,
+  "vzBrotliBytes": 9230,
+  "vzRawBytes": 23164,
+  "libsBrotliBytes": 90235,
   "manifestColdRequests": 14,
   "manifestBootRequests": 5,
   "manifestWarmRequests": 5,
@@ -41,7 +41,7 @@
   "manifestDuplicateRequests": 0
  },
  "soft": {
-  "coldReadyMs": 92,
-  "navFirstMs": 96
+  "coldReadyMs": 78,
+  "navFirstMs": 128
  }
 }

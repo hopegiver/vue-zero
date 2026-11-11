@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test'
+import { readFileSync } from 'node:fs'
 import { useOptions, trackAll, appMounted, spaPush, vzErrors, settle, bootReqs, vueReqs, barrier, editManifest } from '../helpers.js'
 
 // v1.5.0: createApp({ manifest }) — vz-manifest.json 한 개로 pages.json/components.json 을 대신한다(옵트인, 기본 off).
@@ -184,4 +185,52 @@ test('v1.5.0 힌트가 맞고 파일이 실제로 필요한데 없으면 정규 
   expect(errs.filter((e) => e.code === 'E_LAYOUT_NOT_FOUND')).toHaveLength(1)
   expect(errs.filter((e) => e.code === 'E_COMPONENT_FETCH').length).toBeGreaterThan(0)
   expect(errs.find((e) => e.code === 'E_LAYOUT_NOT_FOUND').file).toBe('/layouts/default.vue')
+})
+
+// Inflight.shared 의 재시도 분기: 선행 로드(quiet)가 먼저 시작한 요청에 정규 경로가 합류한 뒤 quiet 가 실패하면,
+// 정규 경로가 직접 다시 받아 보고한다. 이 분기가 없으면 quiet 의 실패(무보고)가 정규 경로로 새어 레이아웃/컴포넌트가 조용히 사라진다.
+const APP_DIR = new URL('../../apps/manifest-app/', import.meta.url)
+for (const [label, first, second, expectErr] of [
+  ['레이아웃 404→404: 정규 경로가 재시도하고 E_LAYOUT_NOT_FOUND 를 보고한다', 404, 404, ['E_LAYOUT_NOT_FOUND']],
+  ['레이아웃 500→200: 정규 경로의 재시도가 성공해 레이아웃이 뜨고 진단은 없다', 500, 200, []],
+]) {
+  test(`v1.5.0 Inflight 재시도(합류 후 quiet 실패): ${label}`, async ({ page }) => {
+    await useOptions(page, { manifest: true })
+    const orig = readFileSync(new URL('layouts/default.vue', APP_DIR), 'utf8')
+    let n = 0, release
+    const held = new Promise((r) => { release = r })
+    await page.route('**/layouts/default.vue', async (r) => {
+      if (++n === 1) { await held; return r.fulfill({ status: first, body: 'x' }) }
+      return second === 200 ? r.fulfill({ contentType: 'text/plain', body: orig }) : r.fulfill({ status: second, body: 'x' })
+    })
+    await page.goto('/', { waitUntil: 'commit' })
+    await page.waitForLoadState('load')
+    await settle(page, 15)
+    expect(n).toBe(1) // 정규 경로가 quiet 요청에 합류했고 새 요청은 없다
+    release()
+    await settle(page, 20)
+    const errs = (await vzErrors(page)).map((e) => e.code).filter((c) => c.startsWith('E_LAYOUT') || c === 'E_PAGE_LOAD')
+    expect(errs).toEqual(expectErr)
+    expect(await page.getByTestId('layout-default').count()).toBe(second === 200 ? 1 : 0)
+    expect(n).toBe(2)
+  })
+}
+
+test('v1.5.0 Inflight 재시도(합류 후 quiet 실패): 컴포넌트 500→200 — 재시도로 Badge 가 그려지고 진단은 없다', async ({ page }) => {
+  await useOptions(page, { manifest: true })
+  const orig = readFileSync(new URL('components/Badge.vue', APP_DIR), 'utf8')
+  let n = 0, release
+  const held = new Promise((r) => { release = r })
+  await page.route('**/components/Badge.vue', async (r) => {
+    if (++n === 1) { await held; return r.fulfill({ status: 500, body: 'x' }) }
+    return r.fulfill({ contentType: 'text/plain', body: orig })
+  })
+  await page.goto('/', { waitUntil: 'commit' })
+  await page.waitForLoadState('load')
+  await settle(page, 30)
+  release()
+  await expect(page.getByTestId('page')).toHaveText('Home')
+  await settle(page, 20)
+  expect(await vzErrors(page)).toEqual([])
+  expect(await page.getByTestId('badge').count()).toBeGreaterThan(0)
 })
