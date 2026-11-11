@@ -77,8 +77,10 @@ test/
 ├── jwt.mjs                 # 테스트용 HS256 JWT (서버·e2e 공유)
 ├── playwright.config.js    # 앱별 project + webServer (포트 4101~4104)
 ├── scripts/gen-stress.mjs  # stress 앱 컴포넌트 300개 생성 (생성물은 .gitignore)
+├── scripts/gen-manifest.mjs # vz-manifest.json 형식 v1 테스트 전용 생성기 (참조 구현은 template/bin/scan.js). 명세: docs/architecture/manifest-format.md
+├── fixtures/manifest-golden/ # 골든 픽스처(app/ + expected/). template/tests/fixtures/manifest-golden 과 바이트 동일해야 한다
 ├── apps/{basic,auth,custom-dirs,stress}/   # 각 앱의 index.html 은 window.__VZ_OPTIONS__ 를 createApp 옵션으로 쓴다
-└── e2e/{basic,auth,custom-dirs,stress}/*.spec.js, e2e/helpers.js
+└── e2e/{basic,auth,custom-dirs,stress}/*.spec.js, e2e/manifest/golden.spec.js(브라우저 없는 Node 테스트, project `manifest`), e2e/helpers.js
 ```
 
 - **AI/개발 중에는 `pnpm check` 를 쓴다.** 성공 1줄, 실패는 `파일:줄 + 오류 요약(기대/실제 diff 포함)`만 나온다(전체는 `test/.results/last.json`). 직접 실행은 `node scripts/check.mjs`(pnpm 12 는 `-s` 옵션 없음). 같은 실패를 `pnpm test`(list)로 보면 수천 줄·70KB 이므로 상세가 꼭 필요할 때만 쓴다.

@@ -18,11 +18,15 @@ export default defineConfig({
   expect: { timeout: 7_000 },
   reporter: process.env.CI ? [['list'], ['github']] : [['list']],
   use: { ...devices['Desktop Chrome'], browserName: 'chromium', trace: 'retain-on-failure' },
-  projects: Object.entries(apps).map(([name, port]) => ({
-    name,
-    testDir: `./e2e/${name}`,
-    use: { baseURL: `http://127.0.0.1:${port}` },
-  })),
+  projects: [
+    ...Object.entries(apps).map(([name, port]) => ({
+      name,
+      testDir: `./e2e/${name}`,
+      use: { baseURL: `http://127.0.0.1:${port}` },
+    })),
+    // 브라우저·서버가 필요 없는 Node 테스트(매니페스트 생성기 골든) — 항상 포함
+    { name: 'manifest', testDir: './e2e/manifest' },
+  ],
   webServer: Object.entries(apps).map(([name, port]) => ({
     command: `${name === 'stress' ? 'node test/scripts/gen-stress.mjs && ' : ''}node test/server.mjs ${name} ${port}`,
     cwd: new URL('..', import.meta.url).pathname,
