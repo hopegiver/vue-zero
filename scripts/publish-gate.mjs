@@ -12,8 +12,13 @@ if (process.env.VZ_SKIP_GATE === '1') {
   process.exit(0)
 }
 
+// `npm publish --dry-run` 리허설이 자식의 `npm pack` 까지 dry-run 으로 만들어 tarball 이 없어 실패하므로, 게이트 자식에는 dry-run 을 넘기지 않는다.
+const childEnv = { ...process.env, VZ_NO_TEMPLATE_COPY: '1' }
+delete childEnv.npm_config_dry_run
+delete childEnv.NPM_CONFIG_DRY_RUN
+
 for (const script of ['verify-static.mjs --require-pushed', 'verify-e2e.mjs']) {
-  const r = spawnSync(`node scripts/${script}`, { cwd: root, shell: true, stdio: 'inherit', env: { ...process.env, VZ_NO_TEMPLATE_COPY: '1' } })
+  const r = spawnSync(`node scripts/${script}`, { cwd: root, shell: true, stdio: 'inherit', env: childEnv })
   if (r.status !== 0) {
     console.error(`\n[vue-zero-ai] publish 차단: ${script} 실패. 해결 후 다시 시도하세요 (긴급 시에만 VZ_SKIP_GATE=1).`)
     process.exit(1)
