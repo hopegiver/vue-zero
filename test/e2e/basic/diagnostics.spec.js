@@ -60,6 +60,7 @@ test.describe('script 오류 원인 힌트 (에러 화면으로 가고, 코드·
   const cases = [
     ['/err-setup', 'E_SCRIPT_SETUP', '/pages/err-setup.vue', /Options API/],
     ['/err-import', 'E_RELATIVE_IMPORT', '/pages/err-import.vue', /import/],
+    ['/err-bare', 'E_BARE_IMPORT', '/pages/err-bare.vue', /Vue is global.*Options API/],
     ['/err-ts', 'E_SCRIPT_TS', '/pages/err-ts.vue', /TypeScript/],
   ]
   for (const [url, code, file, hint] of cases) {
@@ -108,14 +109,63 @@ test('E_RESERVED_TAG: pages.json 의 예약 태그 파일명은 방문하지 않
   expect(c.errors.some((e) => e.includes('E_RESERVED_TAG') && e.includes('table'))).toBe(true)
 })
 
-test('에러 메시지에 섞인 JWT 모양 문자열은 버퍼/콘솔에서 가려진다', async ({ page }) => {
+// v1.4.0: runtime/render/route 메시지와 Vue 경고는 JWT·Bearer·이메일·32자 이상 토큰을 가리고 300자로 자른다 (버퍼·콘솔 텍스트 공통)
+test('에러 메시지에 섞인 JWT·Bearer·이메일·sk_live_ 토큰은 버퍼/콘솔에서 가려진다', async ({ page }) => {
   const c = collectConsole(page)
   await page.goto('/err-secret')
   await expect.poll(async () => (await vzErrors(page)).some((e) => e.code === 'E_RUNTIME')).toBe(true)
   const entry = byCode(await vzErrors(page), 'E_RUNTIME')
   expect(entry.message).toContain('[jwt]')
-  expect(JSON.stringify(entry)).not.toContain('eyJ')
-  expect(c.errors.find((e) => e.includes('E_RUNTIME')).split('\n')[0]).not.toContain('eyJ')
+  expect(entry.message).toContain('[email]')
+  expect(entry.message).toContain('Bearer [token]')
+  for (const secret of ['eyJ', 'kim@example.com', 'sk_live_', 'abc.def-123']) {
+    expect(JSON.stringify(entry)).not.toContain(secret)
+    expect(c.errors.find((e) => e.includes('E_RUNTIME')).split('\n')[0]).not.toContain(secret)
+  }
+})
+
+test('E_VUE_WARN 경고 원문의 비밀도 가려진다', async ({ page }) => {
+  await page.goto('/err-secret')
+  await appMounted(page)
+  const handled = await page.evaluate(() => {
+    const app = document.querySelector('#app').__vue_app__
+    app.config.warnHandler('Invalid prop: key=sk_' + 'live_51Habcdefghijklmnopqrstuv mail=kim@example.com ' + 'x'.repeat(400), null, '')
+    return true
+  })
+  expect(handled).toBe(true)
+  const w = byCode(await vzErrors(page), 'E_VUE_WARN')
+  expect(w.message).not.toContain('sk_live_')
+  expect(w.message).not.toContain('kim@example.com')
+  expect(w.message.length).toBeLessThanOrEqual(300)
+})
+
+// v1.4.0: prod Vue 의 info('…/error-reference/#runtime-<코드>')를 번호표로 풀면 3.5 와 어긋나 라벨이 틀렸다 — 원문을 그대로 둔다
+test.describe('prod Vue 오류 위치: 원문 코드를 그대로 싣고 틀린 라벨을 붙이지 않는다', () => {
+  const wrong = /directive hook|component event handler|transition hook|vnode hook/
+  test('click 핸들러(native event handler = 5)', async ({ page }) => {
+    await page.goto('/err-click')
+    await page.getByTestId('boom-btn').click()
+    await expect.poll(async () => byCode(await vzErrors(page), 'E_RUNTIME')).toBeTruthy()
+    const e = byCode(await vzErrors(page), 'E_RUNTIME')
+    expect(e).toMatchObject({ file: '/pages/err-click.vue' })
+    expect(e.message).toMatch(/boom-click \(.*#runtime-5\)$/)
+    expect(e.message).not.toMatch(wrong)
+  })
+  test('watcher callback(= 3)', async ({ page }) => {
+    await page.goto('/err-watch')
+    await expect.poll(async () => byCode(await vzErrors(page), 'E_RUNTIME')).toBeTruthy()
+    const e = byCode(await vzErrors(page), 'E_RUNTIME')
+    expect(e.message).toMatch(/boom-watch \(.*#runtime-3\)$/)
+    expect(e.message).not.toMatch(wrong)
+  })
+  test('mounted hook(= m)과 render(= 1, E_RENDER 유지)', async ({ page }) => {
+    await page.goto('/err-runtime')
+    await expect.poll(async () => byCode(await vzErrors(page), 'E_RUNTIME')).toBeTruthy()
+    expect(byCode(await vzErrors(page), 'E_RUNTIME').message).toMatch(/boom-page \(.*#runtime-m\)$/)
+    await page.goto('/err-render')
+    await expect.poll(async () => byCode(await vzErrors(page), 'E_RENDER')).toBeTruthy()
+    expect(byCode(await vzErrors(page), 'E_RENDER').message).toMatch(/#runtime-1\)$/)
+  })
 })
 
 test('링 버퍼: 최대 50개, 오래된 것부터 버린다', async ({ page }) => {

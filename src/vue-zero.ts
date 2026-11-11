@@ -87,8 +87,6 @@ function lineFromStack(err: unknown, file: string): number | undefined {
   return m ? Number(m[0]) : undefined
 }
 
-const VUE_ERROR_INFO = ['setup function', 'render function', 'native event handler', 'component event handler', 'vnode hook', 'directive hook', 'transition hook', 'app errorHandler', 'app warnHandler', 'ref function', 'async component loader', 'scheduler flush']
-
 // prod 빌드의 Vue.warn 은 NOOP(인자 0개)이라 템플릿 경고(미등록 컴포넌트·미정의 속성 등)가 전부 사라진다
 function hintDevBuild(): void {
   const local = /^(localhost|127\.\d+\.\d+\.\d+|\[?::1\]?|.+\.localhost)$/.test(location.hostname)
@@ -263,6 +261,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
 
   // 이동마다 번호를 매겨, 대기(await) 사이에 더 새로운 이동이 시작되면 이전 이동은 상태를 건드리지 않는다
   let navSeq = 0
+  let loginReported = false
 
   router.beforeEach(async (to) => {
     const seq = ++navSeq
@@ -289,13 +288,12 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
           progress.done()
           return loginPage
         }
-        // 로그인 페이지 자신이 보호 상태면 리다이렉트가 끝없이 반복된다 — 공개로 취급해 끊는다
-        if (name === '404') {
-          report({ code: 'E_LOGIN_PAGE_MISSING', stage: 'auth', file: `${pagesDir}/pages.json`, message: `loginPage "${loginPage}" matches no page — redirect loop`, hint: `Add a login page to pages.json with auth: false (404 treated as public meanwhile)` })
-        } else {
-          report({ code: 'E_LOGIN_PAGE_PROTECTED', stage: 'auth', file, message: `loginPage "${loginPage}" is a protected page — redirect loop`, hint: `${file} 에 auth: false 를 추가 (export default { auth: false }); treated as public meanwhile` })
+        // 로그인 페이지로 해석되는 바로 이 경로의 이동만 통과시켜(공개 취급) 리다이렉트 반복을 끊는다 — 같은 라우트의 다른 경로는 계속 로그인으로 보낸다
+        if (!loginReported) {
+          loginReported = true
+          if (name === '404') report({ code: 'E_LOGIN_PAGE_MISSING', stage: 'auth', file: `${pagesDir}/pages.json`, message: `loginPage "${loginPage}" matches no page — redirect loop`, hint: `Add a login page to pages.json with auth: false (404 treated as public meanwhile)` })
+          else report({ code: 'E_LOGIN_PAGE_PROTECTED', stage: 'auth', file, message: `loginPage "${loginPage}" is a protected page — redirect loop`, hint: `add auth: false to ${file} (export default { auth: false }); it is treated as public meanwhile` })
         }
-        authCache.set(name, false)
       }
 
       // 페이지 템플릿이 쓰는 컴포넌트 미리 받기
@@ -379,16 +377,14 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     if (err instanceof VzError && err.reported) return
     const file = fileOf(instance)
     const msg = err instanceof Error ? err.message : String(err)
-    // prod 빌드의 info 는 'https://vuejs.org/error-reference/#runtime-<번호>' 형태다
-    const num = /#runtime-(\d+)/.exec(info)
-    const where = num ? (VUE_ERROR_INFO[Number(num[1])] ?? info) : info
-    const isRender = /render/i.test(where)
+    // info: dev 는 'render function' 같은 문구, prod 는 'https://vuejs.org/error-reference/#runtime-<코드>' (render function = 1) — 번호표를 두지 않고 원문을 쓴다
+    const isRender = /^render function|#runtime-1$/.test(info)
     report({
       code: isRender ? 'E_RENDER' : 'E_RUNTIME',
       stage: 'render',
       file,
       line: lineFromStack(err, file),
-      message: `${msg} (${where})`,
+      message: `${msg} (${info})`,
       hint: isRender ? 'template uses an undefined/null data, computed or prop' : 'see file:line in the stack',
     }, 'error', err)
   }

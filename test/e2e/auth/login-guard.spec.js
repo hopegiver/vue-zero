@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test'
-import { useOptions, trackAll, vzErrors, collectConsole } from '../helpers.js'
+import { useOptions, trackAll, vzErrors, collectConsole, spaPush } from '../helpers.js'
 
 // v1.4.0: loginPage 가 보호 상태(auth:false 누락)면 리다이렉트가 끝없이 반복되어 탭이 멈췄다(prod 라우터는 중단 장치가 없다).
 // 이제 E_LOGIN_PAGE_PROTECTED 로 보고하고 그 페이지를 공개 취급해 끊는다.
@@ -54,4 +54,28 @@ test('인증된 상태에서는 보호 페이지의 컴포넌트·레이아웃�
   await page.goto('/vault')
   await expect(page.getByTestId('secret')).toBeVisible()
   await expect(page.getByTestId('layout')).toBeVisible()
+})
+
+// v1.4.0 (리뷰 Major 1): 공개 취급은 loginPage 로 해석되는 바로 그 경로의 이동에만 적용된다.
+// 이전 구현은 authCache.set(라우트이름,false)라 loginPage 가 동적 라우트(users/[id])에 걸리면 /users/42 도 미인증으로 렌더됐다.
+test('loginPage 가 보호된 동적 라우트에 걸려도 같은 라우트의 다른 경로는 계속 로그인으로 리다이렉트된다', async ({ page }) => {
+  const c = collectConsole(page)
+  await page.route('**/pages/pages.json', (r) => r.fulfill({ json: ['index', 'users/[id]'] }))
+  await useOptions(page, { auth: { enabled: true, loginPage: '/users/login' } })
+  await page.goto('/users/login', { waitUntil: 'commit', timeout: 5000 })
+  await expect(page.getByTestId('page')).toHaveText('user login', { timeout: 5000 })   // loginPage 경로 자체는 공개 취급
+  await spaPush(page, '/users/42')
+  await expect(page).toHaveURL(/\/users\/login$/)
+  await expect(page.getByTestId('page')).toHaveText('user login')
+  await spaPush(page, '/users/7')
+  await expect(page).toHaveURL(/\/users\/login$/)
+  await expect(page.getByText('user 42')).toHaveCount(0)
+  await expect(page.getByText('user 7')).toHaveCount(0)
+  // 새로 열어도 마찬가지
+  await page.goto('/users/42', { waitUntil: 'commit', timeout: 5000 })
+  await expect(page).toHaveURL(/\/users\/login$/)
+  await expect(page.getByTestId('page')).toHaveText('user login')
+  const protectedReports = (await vzErrors(page)).filter((e) => e.code === 'E_LOGIN_PAGE_PROTECTED')
+  expect(protectedReports).toHaveLength(1)
+  expect(c.errors.filter((e) => e.includes('E_LOGIN_PAGE_PROTECTED'))).toHaveLength(2)  // 앱(페이지 로드)마다 1회: goto 2번 = 2, 같은 로드 안의 반복 이동은 보고하지 않는다
 })

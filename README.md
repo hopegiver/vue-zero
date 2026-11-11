@@ -55,7 +55,7 @@ pages/
 
 **Layouts** — `layouts/default.vue` wraps all pages. Use `layout: 'admin'` or `layout: false` per page.
 
-**Auth guard** — When `auth.enabled: true`, all pages are protected by default. Mark public pages with `auth: false`. Built-in JWT support.
+**Auth guard** — When `auth.enabled: true`, all pages are protected by default. Mark public pages with `auth: false`. Built-in JWT support. An unauthenticated visit to a protected page is redirected to `loginPage` before its components and layout are fetched, but the page's `<script>` is still evaluated (the `auth` option lives inside it) — never put secrets or side effects at the top level of a protected page's script.
 
 **Page titles** — Set `title: 'My Page'` and `document.title` updates on navigation.
 
@@ -159,28 +159,34 @@ VueZero.errors()  // copy of the last 50 reports, oldest first:
 // [{ code, stage, file, line?, message, hint, level: 'error'|'warn', time }]
 ```
 
-`stage` is one of `load | parse | eval | render | route | auth | manifest | config`. Entries hold paths and HTTP status only — never tokens, query strings or user data. Runtime errors carry the real `.vue` file and line (`/pages/foo.vue:12`): scripts are evaluated with a `sourceURL` and line-aligned, so stack traces in the browser DevTools point at the `.vue` file too.
+`stage` is one of `load | parse | eval | render | route | auth | manifest | config`. Sensitive data policy: `load`, `parse`, `manifest` and `auth` entries hold paths and HTTP status only (no tokens, query strings or user data). `render` / `route` entries (`E_RUNTIME`, `E_RENDER`, `E_ROUTE`, `E_VUE_WARN`) keep the message your code or Vue produced, so they can contain app text — but in both the buffer and the console text, JWTs, `Bearer …` values, e-mail addresses and opaque tokens (32+ chars of `[A-Za-z0-9_-]`, e.g. `sk_live_…`) are masked (`[jwt]`, `Bearer [token]`, `[email]`, `[token]`) and the message is cut at 300 characters. The original `Error` object is still passed to `console.error` as a second argument (same exposure as the browser's own uncaught-error output; it provides the clickable stack). On prod Vue builds the location in parentheses is Vue's own `…/error-reference/#runtime-<code>` (e.g. `5` native event handler, `3` watcher callback, `m` mounted hook, `1` render function). Runtime errors carry the real `.vue` file and line (`/pages/foo.vue:12`): scripts are evaluated with a `sourceURL` and line-aligned, so stack traces in the browser DevTools point at the `.vue` file too.
 
-| Code | Level | Stage | Meaning / fix |
-|------|-------|-------|---------------|
-| `E_SCRIPT_SETUP` | error | eval | `<script setup>`, Composition API or `import ... from 'vue'`. Use an Options API `export default {}` |
-| `E_RELATIVE_IMPORT` | error | eval | Any `import` in a `.vue` script (scripts run as Blob URLs). Remove it; use globals |
-| `E_SCRIPT_TS` | error | eval | `lang="ts"` / type annotations. Plain JavaScript only |
-| `E_SCRIPT_EVAL` | error | eval | Other syntax / top-level error in `<script>` |
-| `E_PAGE_FETCH` / `E_LAYOUT_FETCH` / `E_COMPONENT_FETCH` | error | load | `.vue` fetch failed (HTTP status or network). 404: file missing or not in `pages.json`/`components.json` |
-| `E_PAGE_LOAD`, `E_COMPONENT_LOAD`, `E_ERROR_PAGE` | error | load | Other failure while loading a page / component / `error.vue` |
-| `E_LAYOUT_NOT_FOUND` | warn | load | Layout file is 404: the page renders without a layout (only 404 is cached; 5xx/network errors are retried on the next navigation) |
-| `E_RENDER` | error | render | Template render threw (undefined/null data, computed or prop) |
-| `E_RUNTIME` | error | render | Hook / method / event handler threw. See `file:line` |
-| `E_VUE_WARN` | warn | render | Vue development-build warning (needs `vue.global.js`, not `.prod.js`) |
-| `E_STYLE_SCOPED` | warn | parse | `<style scoped>` is not supported; the style is applied globally |
-| `E_RESERVED_TAG` | error | manifest | `pages.json` has a page named like an HTML tag (`table`, `div`, ...). Rename it. Checked at startup |
-| `E_MANIFEST_ENTRY` | error | manifest | `pages.json` entry ends with `.vue` |
-| `E_MANIFEST_MISSING`, `E_NO_PAGES` | warn | manifest | `pages.json` missing / empty |
-| `E_LOGIN_PAGE_PROTECTED` | error | auth | `loginPage` points at a protected page (no `auth: false`), which would redirect forever. Add `auth: false`; the page is treated as public meanwhile |
-| `E_LOGIN_PAGE_MISSING` | error | auth | `loginPage` matches no page and the 404 page is protected |
-| `E_ROUTE` | error | route | Unexpected exception during navigation |
-| `E_OPTION_INVALID`, `E_AUTH_CONFIG` | error / warn | config | Invalid `createApp` option |
+Source: **runtime** = reported by `VueZero` in the browser, **doctor** = reported by the template's `bin/doctor.js` (static check on edit), **both** = the same code from both for the same problem. `level` is a field (`error` / `warn`), never part of the code.
+
+| Code | Source | Level | Stage | Meaning / fix |
+|------|--------|-------|-------|---------------|
+| `E_SCRIPT_SETUP` | both | error | eval | The `<script>` has a `setup` attribute (`<script setup>`). Use an Options API `export default {}` |
+| `E_BARE_IMPORT` | both | error | eval | Bare module import (`import x from 'vue'`, `'lodash'`, ...). Scripts run as Blob URLs: Vue is global (use `Vue.xxx`, Options API); share code via globals |
+| `E_RELATIVE_IMPORT` | both | error | eval | Relative-path `import` (`'../composables/x.js'`). Remove it; use globals |
+| `E_SCRIPT_TS` | both | error | eval | `lang="ts"` / `lang="tsx"` with type annotations. Plain JavaScript only |
+| `E_SCRIPT_EVAL` | runtime | error | eval | Other syntax / top-level error in `<script>` |
+| `E_NO_EXPORT_DEFAULT` | doctor | error | — | `<script>` has no `export default { ... }`; the component would be empty |
+| `E_COMPOSABLES_DIR` | doctor | error | — | A `composables/` folder exists; vue-zero shares code through globals instead |
+| `E_PAGE_FETCH` / `E_LAYOUT_FETCH` / `E_COMPONENT_FETCH` | runtime | error | load | `.vue` fetch failed (HTTP status or network). 404: file missing or not in `pages.json`/`components.json` |
+| `E_PAGE_LOAD`, `E_COMPONENT_LOAD`, `E_ERROR_PAGE` | runtime | error | load | Other failure while loading a page / component / `error.vue` |
+| `E_LAYOUT_NOT_FOUND` | runtime | warn | load | Layout file is 404: the page renders without a layout (only 404 is cached; 5xx/network errors are retried on the next navigation) |
+| `E_RENDER` | runtime | error | render | Template render threw (undefined/null data, computed or prop) |
+| `E_RUNTIME` | runtime | error | render | Hook / method / event handler / watcher threw. See `file:line` |
+| `E_VUE_WARN` | runtime | warn | render | Vue development-build warning (needs `vue.global.js`, not `.prod.js`) |
+| `E_STYLE_SCOPED` | both | warn | parse | `<style scoped>` is not supported; the style is applied globally |
+| `E_RESERVED_TAG` | both | error | manifest | A page (and, for doctor, a component) is named like an HTML tag (`table`, `div`, ...). Rename it. The list is `HTML_RESERVED` in `src/core/RouteScanner.ts`; the runtime checks `pages.json` at startup |
+| `E_MANIFEST_ENTRY` | runtime | error | manifest | `pages.json` entry ends with `.vue` |
+| `E_MANIFEST_MISSING`, `E_NO_PAGES` | runtime | warn | manifest | `pages.json` missing / empty |
+| `E_LOGIN_PAGE_PROTECTED` | both | error | auth | `loginPage` points at a protected page (no `auth: false`), which would redirect forever. Add `auth: false`; only navigation to the `loginPage` path itself is let through meanwhile, other paths still redirect |
+| `E_LOGIN_PAGE_MISSING` | runtime | error | auth | `loginPage` matches no page and the 404 page is protected |
+| `E_PUBLIC_PAGE_PROTECTED` | doctor | error | — | `404.vue` is protected while `loginPage` matches no page (the runtime reports this as `E_LOGIN_PAGE_MISSING`). A protected `404.vue` is otherwise fine (unauthenticated users are sent to the login page) and `error.vue` is never auth-checked |
+| `E_ROUTE` | runtime | error | route | Unexpected exception during navigation |
+| `E_OPTION_INVALID`, `E_AUTH_CONFIG` | runtime | error / warn | config | Invalid `createApp` option |
 
 During development, load the Vue **development** build (`vue.global.js`) instead of `vue.global.prod.js`: with the prod build Vue hides template warnings (unknown components, undefined properties). On `localhost`, vue-zero prints a one-time `console.info` when it detects the prod build.
 

@@ -18,10 +18,16 @@ export interface DiagEntry extends Diag {
 const MAX = 50
 const buffer: DiagEntry[] = []
 
-/** 진단 보고: 콘솔(`[vue-zero] CODE file:line — message` + `hint: …`) + 링 버퍼(VueZero.errors()). 경로·상태코드만 담는다 — 토큰/사용자 데이터 금지. */
+// 사용자 코드의 에러 메시지·Vue 경고에 섞일 수 있는 비밀을 가린다 (버퍼·콘솔 텍스트 공통). 가린 뒤에 자른다.
+const mask = (s: string) => s
+  .replace(/eyJ[\w.-]*/g, '[jwt]')
+  .replace(/Bearer\s+[\w.~+\/=-]+/gi, 'Bearer [token]')
+  .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
+  .replace(/[\w-]{32,}/g, '[token]')
+
+/** 진단 보고: 콘솔(`[vue-zero] CODE file:line — message` + `hint: …`) + 링 버퍼(VueZero.errors()). load/parse/manifest/auth 단계는 경로·HTTP 상태만 담는다. runtime/render/route 메시지는 마스킹(JWT·Bearer·이메일·32자 이상 토큰) 후 300자까지. */
 export function report(d: Diag, level: Level = 'error', extra?: unknown): void {
-  // JWT 모양(eyJ…)은 가린다 — 사용자 코드의 에러 메시지에 토큰 조각이 섞일 수 있다
-  const entry: DiagEntry = { ...d, message: d.message.replace(/eyJ[\w.-]*/g, '[jwt]').slice(0, 300), level, time: Date.now() }
+  const entry: DiagEntry = { ...d, message: mask(d.message).slice(0, 300), level, time: Date.now() }
   if (entry.line === undefined) delete entry.line
   buffer.push(entry)
   if (buffer.length > MAX) buffer.shift()

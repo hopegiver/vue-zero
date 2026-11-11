@@ -99,9 +99,9 @@ test/
 ## 구현 규칙
 
 - **빌드 결과물**: `dist/vue-zero.js` 단일 파일만. `.d.ts`, `.map` 등 생성 금지
-- **에러 처리**: 모든 오류·경고는 `console.*` 직접 호출이 아니라 `report({code, stage, file, line?, message, hint})`(`core/Diagnostics.ts`)로 낸다. 안정 코드(`E_…`) + 파일 경로 + 해결 hint 필수, 콘솔 형식 `[vue-zero] CODE file:line — message` + 다음 줄 `hint: …`. 로드/파싱 단계 오류는 `VzError`를 throw 하고 잡는 쪽에서 `reportCaught` 한 번만 보고한다(중복 보고 금지). 버퍼/콘솔에 토큰·쿼리스트링·사용자 데이터를 넣지 않는다(경로·HTTP 상태만). 새 코드는 README 의 "Errors and Diagnostics" 표에 추가한다
+- **에러 처리**: 모든 오류·경고는 `console.*` 직접 호출이 아니라 `report({code, stage, file, line?, message, hint})`(`core/Diagnostics.ts`)로 낸다. 안정 코드(`E_…`) + 파일 경로 + 해결 hint 필수, 콘솔 형식 `[vue-zero] CODE file:line — message` + 다음 줄 `hint: …`. 로드/파싱 단계 오류는 `VzError`를 throw 하고 잡는 쪽에서 `reportCaught` 한 번만 보고한다(중복 보고 금지). load/parse/manifest/auth 단계는 경로·HTTP 상태만 담는다. runtime/render/route/Vue 경고는 메시지를 남기되 `report()`가 JWT·Bearer·이메일·32자 이상 토큰을 마스킹하고 300자로 자른다(콘솔의 원본 Error 인자는 유지). 새 코드는 README 의 "Errors and Diagnostics" 표에 추가한다
 - **스크립트 평가**: `.vue` 의 `<script>` 는 trim 하지 않고 앞쪽 줄 수만큼 `\n` 을 채운 뒤 `//# sourceURL=<.vue 경로>` 를 붙여 실행한다(스택이 실제 .vue 줄을 가리키게). `<script>` 파싱을 건드릴 때 이 줄 정렬이 깨지지 않게 한다
-- **인증 가드 순서**: 인증 검사는 SFC 파싱 직후, 컴포넌트 preload/레이아웃 로드 **앞**이다. loginPage 가 보호 상태면 `E_LOGIN_PAGE_PROTECTED`로 보고하고 공개 취급해 리다이렉트 루프를 끊는다
+- **인증 가드 순서**: 인증 검사는 SFC 파싱 직후, 컴포넌트 preload/레이아웃 로드 **앞**이다. loginPage 가 보호 상태면 `E_LOGIN_PAGE_PROTECTED`로 보고하고 그 loginPage 경로로의 이동만 통과시켜(같은 라우트의 다른 경로는 계속 리다이렉트) 루프를 끊는다
 - **로더 캐시**: 같은 파일의 동시 로드는 in-flight Promise 로 병합하고(실패 시 맵에서 삭제), 레이아웃은 404 일 때만 null 캐시한다
 - **의존성 없음**: Vue 3 외 런타임 의존성 금지
 - **주석 최소화**: 코드가 자명하면 주석 생략

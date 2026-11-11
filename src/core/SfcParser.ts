@@ -80,14 +80,15 @@ function parseSfcBlocks(source: string): Blocks {
 
 const SETUP_HINT = 'No <script setup>/Composition API/import. Use <script>export default { data(), methods, ... }</script> (Options API); Vue is global'
 const IMPORT_HINT = 'import is impossible in .vue scripts (run as Blob URL). Remove it; call shared code via globals (window)'
+const VUE_IMPORT_HINT = 'Vue is global (use Vue.xxx), not importable; write Options API: export default { data(), methods, ... }'
 
 function classifyEval(msg: string, attrs: string, file: string, isSyntax: boolean): Diag {
   const base = { stage: 'eval' as const, file }
   const spec = /Failed to resolve module specifier ["']([^"']+)["']/.exec(msg)
   const text = `script eval failed: ${msg}`
+  if (/\bsetup\b/.test(attrs)) return { ...base, code: 'E_SCRIPT_SETUP', message: text, hint: SETUP_HINT }
   if (/Invalid relative url/i.test(msg) || (spec && /^\.{0,2}\//.test(spec[1]))) return { ...base, code: 'E_RELATIVE_IMPORT', message: text, hint: IMPORT_HINT }
-  if ((spec && spec[1] === 'vue') || /\bsetup\b/.test(attrs)) return { ...base, code: 'E_SCRIPT_SETUP', message: text, hint: SETUP_HINT }
-  if (spec) return { ...base, code: 'E_RELATIVE_IMPORT', message: text, hint: IMPORT_HINT }
+  if (spec) return { ...base, code: 'E_BARE_IMPORT', message: text, hint: spec[1] === 'vue' ? VUE_IMPORT_HINT : IMPORT_HINT }
   if (/lang\s*=\s*["']?tsx?\b/.test(attrs) && isSyntax) {
     return { ...base, code: 'E_SCRIPT_TS', message: text, hint: 'TypeScript is not supported. Remove lang="ts" and type annotations' }
   }
