@@ -8,6 +8,32 @@
 > 1.3.0은 로컬에서 직접 `npm publish`한 버전이라 **provenance(출처 증명)가 없고** `v1.3.0` 태그가 없습니다(태그를 새로 만들지 않음).
 > 아래 1.2.0, 1.2.1, 1.3.0 항목은 `git log`/소스를 근거로 소급 작성했습니다. 게시일은 npm 레지스트리 기준(UTC)입니다.
 
+## [1.5.0] - 2026-11-11
+
+로딩 성능 개선. 앱 코드 문법은 바뀌지 않고, 새 기능(매니페스트·영속 캐시)은 옵트인입니다.
+
+### 추가
+- **`createApp({ manifest: true | '<경로>' })`(기본 off).** scan 이 만든 `vz-manifest.json` 한 개(항상 재검증, `cache: 'no-cache'`)로 `pages.json`·`components.json` 요청을 대신합니다. 매니페스트가 없거나 깨졌거나 `v` 가 1이 아니면 `E_MANIFEST_FETCH` 경고 후 `pages.json`/`components.json` 으로 자동 폴백합니다. 형식 명세: `docs/architecture/manifest-format.md`, README "Manifest (vz-manifest.json)".
+- **Cache Storage 영속 캐시**(매니페스트 on + 운영 호스트). `files` 해시가 있는 `.vue` 를 캐시 `vue-zero-<버전>` 에 `<경로>?v=<해시>` 키로 저장·조회합니다. 적중하면 네트워크 요청이 없고, 해시가 바뀐 파일만 다시 받습니다. 마운트 뒤 유휴 시간에 현재 매니페스트에 없는 옛 항목과 다른 버전의 `vue-zero-*` 캐시를 지웁니다. 서버의 `_headers`/캐시 설정은 필요 없습니다. `localhost`/`127.0.0.1`/`[::1]`/`?vzdev` 에서는 쓰지 않습니다. `caches` 미지원·예외·쿼터 초과는 조용히 일반 fetch 로 폴백합니다.
+- **`deps` 병렬 선행 로드**(매니페스트 on). 이동 시작 시 페이지 `.vue`·레이아웃·의존 컴포넌트를 동시에 요청합니다. 인증이 켜져 있고 미인증이면 페이지 `.vue` 를 받아 `auth` 판단을 통과한 뒤에 시작하므로, 보호 페이지의 레이아웃·컴포넌트는 미인증 방문자에게 요청되지 않습니다(`deps` 는 힌트라 틀려도 동작은 같습니다).
+- 새 에러 코드 `E_MANIFEST_FETCH`(런타임 경고)와 `E_MANIFEST_STALE`(템플릿 doctor / `scan --check` 전용), `E_NOT_FOUND_PAGE`(아래).
+- `bench/`: `vz-manifest` 변형, `bench/compare.mjs`, 예산 게이트 확장(웜 요청 수·웜 `.vue` 0건·웨이브 수). 결과와 한계는 `bench/RESULTS.md` §9.
+
+### 변경
+- **`404.vue`/`error.vue` 존재 확인 요청을 없앴습니다(매니페스트 사용 여부와 무관).** catch-all 라우트를 항상 등록하고 `404.vue` 는 처음 필요할 때, `error.vue` 는 페이지 로드가 실패했을 때만 받습니다. 첫 방문 요청이 2건 줄었습니다(벤치 규모 M 홈 17 → 15).
+
+### 호환성 주의사항
+- **기본 동작은 그대로입니다.** `manifest` 를 켜지 않으면 `pages.json`/`components.json` 을 받고 영속 캐시·선행 로드를 쓰지 않습니다(테스트로 고정).
+- **404/error 동작 차이.** `pages/404.vue` 가 없을 때 알 수 없는 URL 은 이제 레이아웃 안의 빈 본문으로 렌더되고 `E_NOT_FOUND_PAGE` 경고가 1회 나옵니다(이전에는 catch-all 라우트가 없었습니다). `404.vue`/`error.vue` 는 파일이 있어도 첫 필요 시점까지 요청되지 않으므로, 서버 로그에서 부팅 때의 두 요청이 사라집니다. `error.vue` 가 없을 때 로드 실패는 조용히 넘어가고(`E_ERROR_PAGE` 없음) 없다는 사실은 캐시됩니다.
+- **dist 크기.** v1.4.0 17,146 B → 19,668 B(+2,522 B).
+- **`caches` 사용.** `manifest` 를 켜면 운영 호스트에서 Cache Storage 를 씁니다(HTTPS 등 보안 컨텍스트에서만; 아니면 일반 fetch). 같은 출처의 여러 앱이 서로 다른 라이브러리 버전을 쓰면 서로의 캐시를 지웁니다. Chromium 에서만 검증했습니다.
+- **dev 판별.** `localhost`/`127.0.0.1`/`[::1]` 또는 `?vzdev` 에서는 해시·영속 캐시를 쓰지 않습니다(편집 중 stale 방지; 템플릿 `index.html` 과 같은 규칙).
+- 매니페스트의 `has404`/`hasError`/`build` 필드는 라이브러리가 읽지 않습니다.
+
+### 업그레이드
+- 1.4.0 → 1.5.0: CDN 은 `vue-zero-ai@1.5.0` 으로 올리고, 번들 복사 사용은 `pnpm add vue-zero-ai@1.5.0` 후 `dist/vue-zero.js` 를 앱의 `assets/js/vue-zero.js` 로 교체합니다. 이것만으로 기존 앱은 동작하고 404/error 요청이 줄어듭니다.
+- 매니페스트를 쓰려면(선택): 템플릿의 최신 `bin/scan.js`·`bin/manifest.js` 로 `npm run scan` 을 실행해 `app/vz-manifest.json` 을 만들고, `createApp({ manifest: true })` 로 켭니다. **배포 전에 항상 scan** 해야 합니다(템플릿 `npm run deploy` = scan → `wrangler deploy`, 검사만 하려면 `npm run scan -- --check`). 매니페스트가 오래되면 브라우저가 옛 해시 키의 캐시된 `.vue` 를 계속 쓸 수 있습니다.
+
 ## [1.4.0] - 2026-11-11
 
 ### 추가

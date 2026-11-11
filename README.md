@@ -137,12 +137,44 @@ VueZero.createApp({
   pagesDir: 'pages',           // default
   componentsDir: 'components', // default
   layoutsDir: 'layouts',       // default
+  manifest: false,             // default. true | '<path>' → use vz-manifest.json (see "Manifest")
   auth: {
     enabled: true,
     loginPage: '/login',
   }
 })
 ```
+
+## Manifest (vz-manifest.json)
+
+Opt-in (`manifest: true`, or a path string such as `'/vz-manifest.json'`; default off). With it off, startup requests are the same as before (`pages.json` + `components.json`). A **generator** writes `vz-manifest.json` next to `index.html`; the library only reads it. The generator is not part of this package (the npm tarball is `dist/vue-zero.js` only): the reference implementation is `npm run scan` in [vue-zero-template](https://github.com/hopegiver/vue-zero-template) (`bin/scan.js`). `pages.json` / `components.json` are still generated; the manifest is an additional artifact.
+
+**Format v1** (full spec: [docs/architecture/manifest-format.md](docs/architecture/manifest-format.md)):
+
+```json
+{"v":1,"build":"<sha256 hex>","pages":["about","index"],"components":["AppButton"],"has404":true,"hasError":false,
+ "files":{"components/AppButton.vue":"86fe3c247d","layouts/default.vue":"6d6cfd12ae","pages/about.vue":"bea73300b6"},
+ "deps":{"pages/about.vue":{"layout":"default","components":["AppButton"]}}}
+```
+
+- `pages`, `components`: the same lists as `pages.json` / `components.json`.
+- `files`: content hash of every `.vue` under `pages/`, `components/`, `layouts/` (first 10 hex chars of sha256 of the UTF-8 text with CRLF normalized to LF).
+- `deps`: per page, its layout and the components its template uses (transitive closure). A hint only: missing or wrong `deps` make the app slower, never different.
+- `build`, `has404`, `hasError` are part of the format but the library does not read them (`404.vue` / `error.vue` are fetched only when needed, with or without a manifest).
+
+**What the library does with it** (`manifest` on):
+- At startup it fetches `vz-manifest.json` with `cache: 'no-cache'` (always revalidated) instead of `pages.json` + `components.json`. If it is missing, not valid JSON or not `v: 1`, it reports a `E_MANIFEST_FETCH` warning and falls back to `pages.json` / `components.json`.
+- **Persistent cache**: on a production host, each `.vue` listed in `files` is stored in Cache Storage (cache name `vue-zero-<library version>`) under the key `<path>?v=<hash>`, and requested from the network as that same `?v=<hash>` URL on a miss. A hit makes **no network request**; a changed file has a new hash, hence a new key. No server cache headers (`_headers`) are needed. Only same-origin static `.vue` sources go through this cache (no tokens, user data or API responses). Hash values that are not 1-64 word/`-` characters are ignored (that file is requested normally).
+- **Dev hosts** (`localhost`, `127.0.0.1`, `[::1]`, or `?vzdev` in the URL; the same rule as the template `index.html`) never use hashes or the persistent cache, because files change while editing. The manifest's lists and `deps` are still used.
+- **Cleanup**: after mount, in idle time (`requestIdleCallback`, `setTimeout` 1 s if unavailable), it deletes other versions' `vue-zero-*` caches and entries of this app's `pages`/`components`/`layouts` directories that are not in the current manifest.
+- **Parallel preload**: when navigation starts, the page's `.vue`, its layout and its `deps.components` are requested at the same time. When auth is enabled and the user is not authenticated, `deps` are started only after the page's `.vue` has been fetched and parsed and its `auth` option allows the visit, so layouts and components of a protected page are not downloaded for an unauthenticated visitor.
+
+**Deploy flow**: run `scan` before every deploy so `vz-manifest.json` matches the files you ship (template: `npm run deploy` = `scan` → `wrangler deploy`; `npm run scan -- --check` only checks and reports `E_MANIFEST_STALE`). A stale manifest points at hashes of old sources, and browsers keep serving the cached old files until the manifest is regenerated.
+
+**Limits of the persistent cache**:
+- It needs Cache Storage (`caches`), which exists only in secure contexts (HTTPS or localhost). On plain `http://` hosts, in private modes that reject it, or when the quota is exceeded, vue-zero silently falls back to normal `fetch` (the manifest itself still works). These fallbacks are covered by tests with Chromium; other browsers are not tested.
+- Several apps on one origin share the `vue-zero-<version>` cache name. Cleanup only touches the current app's directories, but an app on a different library version deletes the other version's cache, so mixed versions on one origin evict each other on every visit.
+- The hash is a cache key, not an integrity check. Statically served `?v=` URLs must return the same file as the plain URL (static hosts ignore the query string).
 
 ## Errors and Diagnostics
 
@@ -183,6 +215,8 @@ Source: **runtime** = reported by `VueZero` in the browser, **doctor** = reporte
 | `E_RESERVED_TAG` | both | error | manifest | A page (and, for doctor, a component) is named like an HTML tag (`table`, `div`, ...). Rename it. The list is `HTML_RESERVED` in `src/core/RouteScanner.ts`; the runtime checks `pages.json` at startup |
 | `E_MANIFEST_ENTRY` | runtime | error | manifest | `pages.json` entry ends with `.vue` |
 | `E_MANIFEST_MISSING`, `E_NO_PAGES` | runtime | warn | manifest | `pages.json` missing / empty |
+| `E_MANIFEST_FETCH` | runtime | warn | manifest | `manifest` option is on but `vz-manifest.json` is missing (HTTP status / network), not valid JSON or not `v: 1`. The app falls back to `pages.json` / `components.json` (works, just slower). Run `scan` and deploy the file, or remove the option |
+| `E_MANIFEST_STALE` | doctor | error | — | Template `npm run doctor` / `npm run scan -- --check` only (not the runtime): `vz-manifest.json` hashes or lists differ from the real files, or the `manifest` option is on but the file is missing. Run `npm run scan` before deploying |
 | `E_LOGIN_PAGE_PROTECTED` | both | error | auth | `loginPage` points at a protected page (no `auth: false`), which would redirect forever. Add `auth: false`; only navigation to the `loginPage` path itself is let through meanwhile, other paths still redirect |
 | `E_LOGIN_PAGE_MISSING` | runtime | error | auth | `loginPage` matches no page and the 404 page is protected |
 | `E_ROUTE` | runtime | error | route | Unexpected exception during navigation |

@@ -46,6 +46,8 @@ package/
 ├── dist/
 │   └── vue-zero.js              # 빌드 결과물
 ├── build.js                     # esbuild 빌드 + ../template/app/assets/js/ 자동 복사
+├── bench/                       # 로딩 성능 벤치(vz·vz-manifest·vz-immutable·nuxt). 결과·한계는 bench/RESULTS.md, 예산 게이트는 `pnpm bench:budget`
+├── docs/architecture/manifest-format.md  # vz-manifest.json 형식 v1 명세 (생성기 참조 구현은 ../template/bin/scan.js)
 ├── test/                        # E2E 스위트 (Playwright) — 아래 "테스트" 섹션 참고
 ├── scripts/                     # 릴리스 게이트: verify-static/verify-e2e/publish-gate(prepublishOnly), verify-published(publish 후 수동 확인), changelog(릴리스 노트 추출)
 ├── CHANGELOG.md                 # 버전별 변경 (GitHub Release 본문의 원본)
@@ -64,6 +66,7 @@ pnpm build       # 배포용 단일 파일 빌드
 pnpm check       # (개발 중 기본) 필요 시 빌드 → E2E, 성공하면 1줄·실패하면 실패 지점만 출력 (토큰 절약). 이후 인자는 playwright 로: pnpm check -- -g "제목 일부"
 pnpm test        # 전체 E2E 상세 출력 (list 리포터 — 성공해도 80여 줄, 실패 시 수천 줄)
 pnpm test:basic  # basic 앱만
+pnpm bench:budget  # 규모 M 결정적 지표(요청 수·바이트·웜 .vue·웨이브) 예산 게이트
 ```
 
 빌드 시 `../template/app/assets/js/vue-zero.js`에 자동 복사됩니다.
@@ -81,7 +84,7 @@ test/
 ├── scripts/gen-manifest.mjs # vz-manifest.json 형식 v1 테스트 전용 생성기 (참조 구현은 template/bin/scan.js). 명세: docs/architecture/manifest-format.md
 ├── fixtures/manifest-golden/ # 골든 픽스처(app/ + expected/). template/tests/fixtures/manifest-golden 과 바이트 동일해야 한다
 ├── apps/{basic,auth,custom-dirs,stress,manifest-app}/   # 각 앱의 index.html 은 window.__VZ_OPTIONS__ 를 createApp 옵션으로 쓴다. manifest-app 의 vz-manifest.json/pages.json/components.json 은 webServer 가 서버 시작 전에 gen-manifest.mjs 로 만든다(.gitignore)
-└── e2e/{basic,auth,custom-dirs,stress,manifest-app}/*.spec.js, e2e/manifest/golden.spec.js(브라우저 없는 Node 테스트, project `manifest`), e2e/helpers.js
+└── e2e/{basic,auth,custom-dirs,stress,manifest-app}/*.spec.js, e2e/manifest/golden.spec.js(브라우저 없는 Node 테스트, project `manifest`), e2e/helpers.js (basic 의 boot-requests.spec.js 는 404/error 지연 확인과 부팅 요청 목록)
 ```
 
 - **AI/개발 중에는 `pnpm check` 를 쓴다.** 성공 1줄, 실패는 `파일:줄 + 오류 요약(기대/실제 diff 포함)`만 나온다(전체는 `test/.results/last.json`). 직접 실행은 `node scripts/check.mjs`(pnpm 12 는 `-s` 옵션 없음). 같은 실패를 `pnpm test`(list)로 보면 수천 줄·70KB 이므로 상세가 꼭 필요할 때만 쓴다.
@@ -106,6 +109,8 @@ test/
 - **에러 처리**: 모든 오류·경고는 `console.*` 직접 호출이 아니라 `report({code, stage, file, line?, message, hint})`(`core/Diagnostics.ts`)로 낸다. 안정 코드(`E_…`) + 파일 경로 + 해결 hint 필수, 콘솔 형식 `[vue-zero] CODE file:line — message` + 다음 줄 `hint: …`. 로드/파싱 단계 오류는 `VzError`를 throw 하고 잡는 쪽에서 `reportCaught` 한 번만 보고한다(중복 보고 금지). load/parse/manifest/auth 단계는 경로·HTTP 상태만 담는다. runtime/render/route/Vue 경고는 메시지를 남기되 `report()`가 JWT·Bearer·이메일·숫자와 영문이 섞인 32자 이상 토큰을 마스킹하고 300자로 자른다(콘솔의 원본 Error 인자는 유지). 새 코드는 README 의 "Errors and Diagnostics" 표에 추가한다
 - **스크립트 평가**: `.vue` 의 `<script>` 는 trim 하지 않고 앞쪽 줄 수만큼 `\n` 을 채운 뒤 `//# sourceURL=<.vue 경로>` 를 붙여 실행한다(스택이 실제 .vue 줄을 가리키게). `<script>` 파싱을 건드릴 때 이 줄 정렬이 깨지지 않게 한다
 - **인증 가드 순서**: 인증 검사는 SFC 파싱 직후, 컴포넌트 preload/레이아웃 로드 **앞**이다. loginPage 가 보호 상태면 `E_LOGIN_PAGE_PROTECTED`로 보고하고 그 loginPage 경로로의 이동만 통과시켜(같은 라우트의 다른 경로는 계속 리다이렉트) 루프를 끊는다
+- **404/error 지연 로드**: `404.vue`/`error.vue` 존재를 부팅 때 fetch 하지 않는다. catch-all 라우트는 항상 등록하고 처음 필요할 때 로드하며, 없으면(404) 그 사실만 캐시한다(404.vue 없음: 빈 본문 + `E_NOT_FOUND_PAGE` 1회, error.vue 없음: 조용히 생략)
+- **매니페스트(옵트인 `manifest`)**: 매니페스트의 `has404`/`hasError`/`build` 는 라이브러리가 읽지 않는다. `deps` 는 힌트라 틀려도 동작이 같아야 하며, 인증이 켜진 미인증 상태에서는 SFC 의 auth 판단 뒤에만 `deps` 를 시작한다. 영속 캐시는 같은 출처의 정적 `.vue` 소스만 저장한다(토큰·사용자 데이터 금지), dev 호스트에서는 끈다. 형식을 바꾸면 `v` 를 올리고 template 생성기·골든 사본을 함께 갱신한다
 - **로더 캐시**: 같은 파일의 동시 로드는 in-flight Promise 로 병합하고(실패 시 맵에서 삭제), 레이아웃은 404 일 때만 null 캐시한다
 - **의존성 없음**: Vue 3 외 런타임 의존성 금지
 - **주석 최소화**: 코드가 자명하면 주석 생략
