@@ -93,6 +93,8 @@ test('error.vue: 페이지 fetch 실패(500) 시 error 페이지, 이후 다른 
   await page.locator('a[data-link="/slow-b"]').click()
   await expect(page.getByTestId('error-page')).toBeVisible()
   expect(c.errors.some((e) => e.includes('페이지 로드 실패') && e.includes('/slow-b'))).toBe(true)
+  // v1.3.1: 비활성 상태로 주입되는 페이지 스타일도 error 페이지에서는 활성화되어야 한다
+  expect(await computedColor(page.getByTestId('error-page'))).toBe('rgb(200, 0, 100)')
 
   await spaPush(page, '/about')
   await expect(page.getByTestId('page')).toHaveText('About')
@@ -127,9 +129,8 @@ test('pages.json 없음: 경고, 앱은 마운트됨 (404.vue 로 폴백)', asyn
 })
 
 test('빠른 연속 이동: 먼저 시작한 느린 이동이 나중 이동을 덮어쓰지 않는다 (레이아웃/스타일/title)', async ({ page }) => {
-  // 알려진 라이브러리 버그(src 수정 금지 범위): VZ_RUN_FIXME=1 로 재현 가능.
-  // 원인: router.beforeEach 가 취소된 이전 이동(A)의 지연 완료 후에도 currentLayout/switchPage/document.title 을 그대로 덮어쓴다 (vue-zero.ts beforeEach).
-  test.fixme(!process.env.VZ_RUN_FIXME, '라이브러리 버그: 취소된 느린 이동(A)의 guard 부수효과가 최신 이동(B)의 레이아웃/스타일/title 을 덮어씀 (v1.3.0 확인)')
+  // v1.3.1 회귀: beforeEach 가 취소된 이전 이동(A)의 지연 완료 후에도 currentLayout/switchPage/document.title 을 덮어썼고,
+  // 늦게 도착한 A 의 페이지 스타일이 활성 상태로 주입되어 현재 페이지(B)에 적용되었다.
   // slow-a: layout alt + title + 스타일 / slow-b: default 레이아웃. A 가 늦게 도착해도 최종 상태는 B 여야 한다.
   await page.goto('/layout-alt') // alt 레이아웃을 미리 캐시 -> A 의 지연된 guard 는 네트워크 없이 빠르게 끝난다
   await spaPush(page, '/')

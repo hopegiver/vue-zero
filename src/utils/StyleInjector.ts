@@ -18,6 +18,9 @@ export class StyleInjector {
     el.textContent = css
     document.head.appendChild(el)
     this.injected.set(scopeId, { el, scope })
+    // 현재 페이지가 아닌 페이지 스타일은 숨긴 채 주입한다 — 늦게 도착한 이전 이동의 스타일이 현재 페이지에 적용되는 것을 막는다.
+    // 활성화는 switchPage가 담당한다(첫 로드는 activePageId가 null이라 바로 활성).
+    if (scope === 'page' && this.activePageId !== null && scopeId !== this.activePageId) el.disabled = true
   }
 
   remove(scopeId: string): void {

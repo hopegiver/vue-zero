@@ -221,7 +221,12 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
   const currentLayoutName = Vue.ref('__pending__')
   const currentError = Vue.shallowRef(null as any)
 
+  // 이동마다 번호를 매겨, 대기(await) 사이에 더 새로운 이동이 시작되면 이전 이동은 상태를 건드리지 않는다
+  let navSeq = 0
+
   router.beforeEach(async (to) => {
+    const seq = ++navSeq
+    const isStale = () => seq !== navSeq
     progress.start()
     currentError.value = null
 
@@ -237,6 +242,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
         const sfc = await loadSfc('404', notFoundUrl)
         buildPageComponent('404', sfc)
       }
+      if (isStale()) return  // 라우터가 취소 처리한다
 
       // 레이아웃 로드
       const layoutName = layoutNameCache.get(name)
@@ -246,6 +252,7 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       } else {
         const resolved = layoutName ?? 'default'
         const comp = await loadLayoutComponent(resolved)
+        if (isStale()) return
         currentLayout.value = comp
         currentLayoutName.value = resolved
       }
@@ -264,10 +271,13 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
       }
     } catch (err) {
       console.error(`[vue-zero] 페이지 로드 실패: ${to.fullPath}`, err)
+      if (isStale()) return
       if (hasErrorPage) {
         try {
           const errorSfc = await loadSfc('error', errorUrl)
+          if (isStale()) return
           currentError.value = buildPageComponent('error', errorSfc)
+          styleInjector.switchPage('page-error')
         } catch (errorPageErr) {
           console.error('[vue-zero] error.vue 로드 실패', errorPageErr)
         }
@@ -277,7 +287,9 @@ export async function createApp(options: CreateAppOptions = {}): Promise<void> {
     }
   })
 
-  router.afterEach(() => {
+  router.afterEach((_to, _from, failure) => {
+    // 취소된 이동이 늦게 끝나도 최신 이동의 진행 바를 끝내지 않는다
+    if (failure && VueRouter.isNavigationFailure(failure, VueRouter.NavigationFailureType.cancelled)) return
     progress.done()
   })
 

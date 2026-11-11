@@ -47,6 +47,7 @@ package/
 ├── test/                        # E2E 스위트 (Playwright) — 아래 "테스트" 섹션 참고
 ├── scripts/                     # 릴리스 게이트: verify-static/verify-e2e/verify-published, changelog(릴리스 노트 추출)
 ├── CHANGELOG.md                 # 버전별 변경 (GitHub Release 본문의 원본)
+├── .github/workflows/ci.yml       # main push/PR → E2E (publish 안 함, 게이트 환경을 태그 전에 미리 검증)
 ├── .github/workflows/publish.yml  # 태그 v* push → 검증 게이트 → npm publish → Release
 ├── package.json
 └── README.md
@@ -80,7 +81,7 @@ test/
 
 - 기본은 `../dist/vue-zero.js`를 검증한다. 소스를 고쳤으면 먼저 `pnpm build`. 다른 파일을 검증하려면 `VUEZERO_DIST=<경로> pnpm test` (예: tarball에서 꺼낸 dist).
 - 일부 앱만: `VZ_APPS=basic,auth pnpm exec playwright test -c test/playwright.config.js --project=basic --project=auth`.
-- `test.fixme` 로 남긴 알려진 라이브러리 버그 재현은 `VZ_RUN_FIXME=1` 로 실행한다. 현재 1건: 느린 이동 A 뒤에 B 로 빠르게 이동하면 취소된 A 의 `beforeEach` 후속 처리가 `currentLayout`/`switchPage`/`document.title` 을 덮어씀 (`e2e/basic/routing.spec.js` "빠른 연속 이동", src 미수정).
+- 알려진 라이브러리 버그를 재현만 해 두고 아직 고치지 않는 경우 `test.fixme(!process.env.VZ_RUN_FIXME, '사유')` 로 남기고 `VZ_RUN_FIXME=1` 로 실행해 재현한다. 현재 fixme 없음 (v1.3.1 에서 "빠른 연속 이동" 레이스 수정).
 - 테스트 검증력 확인(변이): `VUEZERO_DIST` 에 과거 릴리스의 dist 를 넣어(`git show <커밋>:dist/vue-zero.js > /tmp/x.js`) 회귀 테스트가 실제로 실패하는지 본다. 예: v1.2.0 dist 는 지연 로딩/base64url 테스트가, v1.1.3 dist 는 isReady 회귀가 실패해야 한다.
 - 앱별 옵션은 `useOptions(page, {...})`(addInitScript)로 주입하고, 토큰은 `seedStorage`로 주입한다. 네트워크 실패/지연은 `page.route` 와 `gate()`(수동 해제)로 만든다. 고정 sleep 금지 — 상태를 기다린다(`settle()`은 프레임만 흘려보낸다).
 - 테스트 앱 코드도 vue-zero 규칙(Options API, scoped 금지, import 없음)을 따른다.
@@ -99,7 +100,7 @@ test/
 
 ## npm 배포
 
-**1.3.1부터 적용.** 게시는 CI 게이트(정적 검증 + E2E)를 통과한 태그 push로만 이루어집니다. **`v1.3.0` 태그는 만들지 않습니다**(1.3.0은 로컬 publish로 이미 게시됨, provenance 없음 — `CHANGELOG.md` 상단 참고).
+**1.3.1부터 적용** (1.3.1이 게이트를 통과하는 첫 릴리스). 게시는 CI 게이트(정적 검증 + E2E)를 통과한 태그 push로만 이루어집니다. **`v1.3.0` 태그는 만들지 않습니다**(1.3.0은 로컬 publish로 이미 게시됨, provenance 없음 — `CHANGELOG.md` 상단 참고).
 
 1. `package.json` 버전을 올리고 `CHANGELOG.md`에 `## [X.Y.Z] - YYYY-MM-DD` 항목 추가 (GitHub Release 본문이 여기서 추출됨)
 2. `pnpm run build` 후 `dist/vue-zero.js`까지 **커밋** (커밋/푸시를 배포보다 먼저)

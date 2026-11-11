@@ -2,3 +2,6 @@
 <script>
 export default {}
 </script>
+<style>
+[data-testid="error-page"] { color: rgb(200, 0, 100); }
+</style>
