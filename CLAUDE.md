@@ -59,7 +59,8 @@ package/
 pnpm install     # 의존성 (pnpm 전용, npm install 금지)
 pnpm dev         # 빌드 watch 모드 (파일 변경 시 자동 빌드 + template에 복사)
 pnpm build       # 배포용 단일 파일 빌드
-pnpm test        # 전체 E2E (Playwright, 앱 4개 병렬)
+pnpm check       # (개발 중 기본) 필요 시 빌드 → E2E, 성공하면 1줄·실패하면 실패 지점만 출력 (토큰 절약). 이후 인자는 playwright 로: pnpm check -- -g "제목 일부"
+pnpm test        # 전체 E2E 상세 출력 (list 리포터 — 성공해도 80여 줄, 실패 시 수천 줄)
 pnpm test:basic  # basic 앱만
 ```
 
@@ -79,6 +80,8 @@ test/
 └── e2e/{basic,auth,custom-dirs,stress}/*.spec.js, e2e/helpers.js
 ```
 
+- **AI/개발 중에는 `pnpm check` 를 쓴다.** 성공 1줄, 실패는 `파일:줄 + 오류 요약(기대/실제 diff 포함)`만 나온다(전체는 `test/.results/last.json`). 직접 실행은 `node scripts/check.mjs`(pnpm 12 는 `-s` 옵션 없음). 같은 실패를 `pnpm test`(list)로 보면 수천 줄·70KB 이므로 상세가 꼭 필요할 때만 쓴다.
+- **Stop 훅 자동 검증** (`.claude/settings.json` → `scripts/hook-check.mjs`): 세션이 끝나기 전에 src/test/scripts 가 마지막 통과 이후 바뀌었을 때만 `check` 를 1회 실행한다. 통과하면 출력 0, 실패하면 요약을 피드백으로 돌려 수정을 이어가게 한다. 바뀐 게 없으면 즉시 종료(0.1초). 끄기: `VZ_NO_HOOK=1`. 환경 문제(브라우저 없음 등)는 작업을 막지 않는다.
 - 기본은 `../dist/vue-zero.js`를 검증한다. 소스를 고쳤으면 먼저 `pnpm build`. 다른 파일을 검증하려면 `VUEZERO_DIST=<경로> pnpm test` (예: tarball에서 꺼낸 dist).
 - 일부 앱만: `VZ_APPS=basic,auth pnpm exec playwright test -c test/playwright.config.js --project=basic --project=auth`.
 - 알려진 라이브러리 버그를 재현만 해 두고 아직 고치지 않는 경우 `test.fixme(!process.env.VZ_RUN_FIXME, '사유')` 로 남기고 `VZ_RUN_FIXME=1` 로 실행해 재현한다. 현재 fixme 없음 (v1.3.1 에서 "빠른 연속 이동" 레이스 수정).

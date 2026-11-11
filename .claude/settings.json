@@ -16,5 +16,18 @@
       "Bash(shred *)",
       "Bash(wipefs *)"
     ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hook-check.mjs",
+            "timeout": 180
+          }
+        ]
+      }
+    ]
   }
 }
