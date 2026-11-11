@@ -99,7 +99,7 @@ test/
 ## 구현 규칙
 
 - **빌드 결과물**: `dist/vue-zero.js` 단일 파일만. `.d.ts`, `.map` 등 생성 금지
-- **에러 처리**: 모든 오류·경고는 `console.*` 직접 호출이 아니라 `report({code, stage, file, line?, message, hint})`(`core/Diagnostics.ts`)로 낸다. 안정 코드(`E_…`) + 파일 경로 + 해결 hint 필수, 콘솔 형식 `[vue-zero] CODE file:line — message` + 다음 줄 `hint: …`. 로드/파싱 단계 오류는 `VzError`를 throw 하고 잡는 쪽에서 `reportCaught` 한 번만 보고한다(중복 보고 금지). load/parse/manifest/auth 단계는 경로·HTTP 상태만 담는다. runtime/render/route/Vue 경고는 메시지를 남기되 `report()`가 JWT·Bearer·이메일·32자 이상 토큰을 마스킹하고 300자로 자른다(콘솔의 원본 Error 인자는 유지). 새 코드는 README 의 "Errors and Diagnostics" 표에 추가한다
+- **에러 처리**: 모든 오류·경고는 `console.*` 직접 호출이 아니라 `report({code, stage, file, line?, message, hint})`(`core/Diagnostics.ts`)로 낸다. 안정 코드(`E_…`) + 파일 경로 + 해결 hint 필수, 콘솔 형식 `[vue-zero] CODE file:line — message` + 다음 줄 `hint: …`. 로드/파싱 단계 오류는 `VzError`를 throw 하고 잡는 쪽에서 `reportCaught` 한 번만 보고한다(중복 보고 금지). load/parse/manifest/auth 단계는 경로·HTTP 상태만 담는다. runtime/render/route/Vue 경고는 메시지를 남기되 `report()`가 JWT·Bearer·이메일·숫자와 영문이 섞인 32자 이상 토큰을 마스킹하고 300자로 자른다(콘솔의 원본 Error 인자는 유지). 새 코드는 README 의 "Errors and Diagnostics" 표에 추가한다
 - **스크립트 평가**: `.vue` 의 `<script>` 는 trim 하지 않고 앞쪽 줄 수만큼 `\n` 을 채운 뒤 `//# sourceURL=<.vue 경로>` 를 붙여 실행한다(스택이 실제 .vue 줄을 가리키게). `<script>` 파싱을 건드릴 때 이 줄 정렬이 깨지지 않게 한다
 - **인증 가드 순서**: 인증 검사는 SFC 파싱 직후, 컴포넌트 preload/레이아웃 로드 **앞**이다. loginPage 가 보호 상태면 `E_LOGIN_PAGE_PROTECTED`로 보고하고 그 loginPage 경로로의 이동만 통과시켜(같은 라우트의 다른 경로는 계속 리다이렉트) 루프를 끊는다
 - **로더 캐시**: 같은 파일의 동시 로드는 in-flight Promise 로 병합하고(실패 시 맵에서 삭제), 레이아웃은 404 일 때만 null 캐시한다
@@ -115,6 +115,7 @@ test/
 2. `pnpm run release:check` — CI와 같은 `scripts/verify-static.mjs` + `scripts/verify-e2e.mjs`를 로컬에서 실행 (src·dist·메타 파일이 클린해야 통과, 로컬에서는 push 여부를 경고만 함)
 3. `git push origin main` (CI `ci.yml` E2E 확인) → `git tag vX.Y.Z` → `git push origin vX.Y.Z`
 4. `.github/workflows/release.yml`이 verify-static(`--allow-published`) ∥ verify-e2e → GitHub Release 생성(제목 `vX.Y.Z`, 본문은 기본 브랜치 `CHANGELOG.md`의 해당 항목 + 마지막 줄에 npm 게시 여부). 이미 Release가 있으면 노트만 갱신(멱등)이라 "Re-run all jobs"도 안전. 기존 태그 재실행/소급 릴리스는 Actions → Release → Run workflow에 `tag` 입력(워크플로 파일은 main 것이 쓰이고, 체크아웃은 그 태그)
-5. **npm 게시(소유자, 로컬, 가끔 최종 버전만):** `npm publish` 시 `prepublishOnly`(`scripts/publish-gate.mjs`)가 `verify-static --require-pushed`(`git fetch` 후 HEAD가 `origin/main`에 없으면 FAIL, 이미 npm에 게시된 버전이면 FAIL) + `verify-e2e`를 실행하고 실패하면 publish를 막는다. 긴급 시에만 `VZ_SKIP_GATE=1`(큰 경고 후 통과, 사유를 CHANGELOG에 남김). 통과 후 `pnpm verify:published` — 레지스트리 노출과 게시된 tarball의 dist == 커밋된 dist(바이트 동일)를 1줄로 확인(태그 없는 과거 버전은 `--ref <커밋>`)
+5. **npm 게시(소유자, 로컬, 가끔 최종 버전만):** `npm publish` 시 `prepublishOnly`(`scripts/publish-gate.mjs`)가 `verify-static --require-pushed`(`git fetch --tags` 후 HEAD가 `origin/main`에 없으면 FAIL, `v<package.json 버전>` 태그가 없거나 태그 커밋 != HEAD이면 FAIL, 이미 npm에 게시된 버전이면 FAIL) + `verify-e2e`를 실행하고 실패하면 publish를 막는다. 긴급 시에만 `VZ_SKIP_GATE=1`(큰 경고 후 통과, 사유를 CHANGELOG에 남김). 게이트는 실수 방지용이라 `npm publish --ignore-scripts`·tarball 직접 게시는 우회되므로 **하지 말 것**. 통과 후 `pnpm verify:published` — 레지스트리 노출과 게시된 tarball의 dist == 커밋된 dist(바이트 동일)를 1줄로 확인(태그 없는 과거 버전은 `--ref <커밋>`)
+   게시 후 Actions → Release → Run workflow(`tag=vX.Y.Z`)로 Release 노트의 npm 줄을 갱신한다(태그 시점엔 미게시로 적혀 있다).
 
 Trusted Publisher/CI npm 게시: 현재 미사용.

@@ -110,6 +110,17 @@ test('E_RESERVED_TAG: pages.json 의 예약 태그 파일명은 방문하지 않
 })
 
 // v1.4.0: runtime/render/route 메시지와 Vue 경고는 JWT·Bearer·이메일·32자 이상 토큰을 가리고 300자로 자른다 (버퍼·콘솔 텍스트 공통)
+// v1.4.0: 마스킹 오탐 축소 — 패키지@버전, 긴 kebab-case 이름, 대시가 있는 UUID 는 진단 가치가 있으므로 가리지 않는다
+test('마스킹 오탐 없음: lodash@4.17.21 · 32자 이상 kebab 이름 · blob UUID 는 그대로 남는다', async ({ page }) => {
+  await page.goto('/err-nomask')
+  await expect.poll(async () => (await vzErrors(page)).some((e) => e.code === 'E_RUNTIME')).toBe(true)
+  const { message } = byCode(await vzErrors(page), 'E_RUNTIME')
+  expect(message).toContain('lodash@4.17.21')
+  expect(message).toContain('user-notification-preferences-settings-panel')
+  expect(message).toContain('3f2a9c1e-7b4d-4e8a-9c55-0a1b2c3d4e5f')
+  expect(message).not.toMatch(/\[(email|token)\]/)
+})
+
 test('에러 메시지에 섞인 JWT·Bearer·이메일·sk_live_ 토큰은 버퍼/콘솔에서 가려진다', async ({ page }) => {
   const c = collectConsole(page)
   await page.goto('/err-secret')

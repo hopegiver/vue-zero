@@ -22,10 +22,10 @@ const buffer: DiagEntry[] = []
 const mask = (s: string) => s
   .replace(/eyJ[\w.-]*/g, '[jwt]')
   .replace(/Bearer\s+[\w.~+\/=-]+/gi, 'Bearer [token]')
-  .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)+/g, '[email]')
-  .replace(/[\w-]{32,}/g, '[token]')
+  .replace(/[\w.+-]+@[\w-]+(?:\.[\w-]+)*\.[A-Za-z]{2,}(?![\w-])/g, '[email]')
+  .replace(/(?=\w*\d)(?=\w*[A-Za-z])\w{32,}/g, '[token]')
 
-/** 진단 보고: 콘솔(`[vue-zero] CODE file:line — message` + `hint: …`) + 링 버퍼(VueZero.errors()). load/parse/manifest/auth 단계는 경로·HTTP 상태만 담는다. runtime/render/route 메시지는 마스킹(JWT·Bearer·이메일·32자 이상 토큰) 후 300자까지. */
+/** 진단 보고: 콘솔(`[vue-zero] CODE file:line — message` + `hint: …`) + 링 버퍼(VueZero.errors()). load/parse/manifest/auth 단계는 경로·HTTP 상태만 담는다. runtime/render/route 메시지는 마스킹(JWT·Bearer·이메일·숫자와 영문이 섞인 32자 이상 토큰) 후 300자까지. */
 export function report(d: Diag, level: Level = 'error', extra?: unknown): void {
   const entry: DiagEntry = { ...d, message: mask(d.message).slice(0, 300), level, time: Date.now() }
   if (entry.line === undefined) delete entry.line

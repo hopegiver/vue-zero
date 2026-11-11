@@ -1,7 +1,7 @@
 // 릴리스 정적 검증 게이트 (CI verify-static 잡 + 로컬 release:check 공용). 의존성 없음.
 // 사용: node scripts/verify-static.mjs [--tag vX.Y.Z] [--require-pushed] [--allow-published]
 //   --tag             생략 시 RELEASE_TAG, GITHUB_REF_NAME, 마지막으로 v<package.json 버전>
-//   --require-pushed  git fetch origin 후 HEAD 가 origin/<기본브랜치>에 없으면 FAIL (prepublishOnly: commit·push 가 publish 보다 먼저)
+//   --require-pushed  git fetch origin --tags 후 HEAD 가 origin/<기본브랜치>에 없거나, v<package.json 버전> 태그가 없거나 태그 커밋 != HEAD 면 FAIL (prepublishOnly: commit·push·태그가 publish 보다 먼저)
 //   --allow-published npm 에 이미 게시된 버전이어도 FAIL 하지 않고 게시 여부만 표기 (태그→GitHub Release 파이프라인용)
 // 모든 검사를 실행한 뒤 실패가 하나라도 있으면 exit 1.
 import { execFileSync } from 'node:child_process'
@@ -56,7 +56,7 @@ check('CHANGELOG에 해당 버전 항목 존재', () => {
 // 태그 커밋이 기본 브랜치에 포함돼 있어야 한다 (임의 브랜치/고아 커밋에 찍은 태그 차단). CI 에서만 강제, 로컬은 푸시 전이라 경고만.
 check('태그 커밋이 origin 기본 브랜치에 포함', () => {
   if (requirePushed && !inCI) {
-    try { run('git', ['fetch', 'origin']) } catch (e) { throw new Error(`git fetch origin 실패: ${String(e.stderr || e.message).split('\n')[0]}`) }
+    try { run('git', ['fetch', 'origin', '--tags']) } catch (e) { throw new Error(`git fetch origin 실패: ${String(e.stderr || e.message).split('\n')[0]}`) }
   }
   let branch = process.env.RELEASE_BRANCH
   if (!branch) {
@@ -76,6 +76,20 @@ check('태그 커밋이 origin 기본 브랜치에 포함', () => {
   }
   return `origin/${branch} 포함`
 })
+
+// 로컬 publish 전용: 게시되는 커밋 == 그 버전의 Release 태그 커밋. (태그 → Release 가 먼저, npm 은 나중. 버전을 안 올렸거나 태그 이후 커밋이 쌓인 HEAD 의 게시를 막는다)
+if (requirePushed && !inCI) {
+  check('v<버전> 태그 존재 및 태그 커밋 == HEAD', () => {
+    const t = `v${pkg.version}`
+    let head, tagged
+    try { head = run('git', ['rev-parse', 'HEAD^{commit}']).toString().trim() } catch (e) { throw new Error(`HEAD 를 읽지 못함: ${String(e.stderr || e.message).split('\n')[0]}`) }
+    try { tagged = run('git', ['rev-parse', '--verify', '--quiet', `refs/tags/${t}^{commit}`]).toString().trim() } catch {
+      throw new Error(`태그 ${t} 가 없음 — package.json 버전을 올리지 않았거나 태그 전입니다. 해결: 버전 커밋을 push 하고 \`git tag ${t} && git push origin ${t}\` 로 Release 를 먼저 만든 뒤 그 커밋에서 publish`)
+    }
+    if (tagged !== head) throw new Error(`태그 ${t}(${tagged.slice(0, 7)}) != HEAD(${head.slice(0, 7)}) — 해결: \`git checkout ${t}\` 후 publish 하거나, 새 버전을 올려 새 태그를 만드세요`)
+    return `${t} == HEAD ${head.slice(0, 7)}`
+  })
+}
 
 // 기본: 이미 게시된 버전이면 실패. --allow-published: 게시 여부만 표기. 네트워크 불가 시: CI·--require-pushed 는 실패, 로컬은 경고 후 통과.
 check(allowPublished ? 'npm 게시 여부(정보)' : 'npm에 미게시 버전', () => {
