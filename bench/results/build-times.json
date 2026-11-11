@@ -1,15 +1,15 @@
 {
  "S": {
-  "nuxtGenerateMs": 4260,
-  "loadavg": 7.8974609375
+  "nuxtGenerateMs": 3020,
+  "loadavg": 9.8505859375
  },
  "M": {
-  "nuxtGenerateMs": 2154,
-  "loadavg": 7.5849609375
+  "nuxtGenerateMs": 2461,
+  "loadavg": 9.7822265625
  },
  "L": {
-  "nuxtGenerateMs": 3406,
-  "loadavg": 7.6982421875
+  "nuxtGenerateMs": 4164,
+  "loadavg": 9.7822265625
  },
  "X60": {
   "nuxtGenerateMs": 3283,
